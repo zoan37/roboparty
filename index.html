@@ -57,6 +57,8 @@
 
     import {io} from "socket.io-client";
 
+    import TextSprite from '@seregpie/three.text-sprite';
+
     let controls;
 
     var keys = [];
@@ -87,6 +89,7 @@
     const playerRotationSpeed = 5;
 
     var player = null;
+    var playerUsernameText = null;
 
     var isOrbitControlsActive = false;
 
@@ -426,6 +429,40 @@
       });
     }
 
+    function getUsernameText(name) {
+      return [
+          ' ',
+          ' ',
+          ' ',
+          ' ',
+          '\n\n\n\n\n ' + name + ' \n\n\n\n\n', // pad with lines to get rid of text cut in half glitch
+          ' ',
+          ' ',
+          ' ',
+          ' ',
+        ].join('\n');
+    }
+
+    function createUsernameTextSprite(name) {
+      let text = new TextSprite({
+        alignment: 'center',
+        color: '#ffffff',
+        fontFamily: 'sans-serif',
+        fontSize: 1,
+        padding: 10,
+        lineGap: 20, // line gap is needed to prevent text cut in half glitch
+        // fontStyle: 'italic',
+        text: getUsernameText(name),
+      });
+      text.position.set(0, 6, 0);
+
+      return text;
+    }
+
+    function updateUsernameTextSprite(textSprite, name) {
+      textSprite.text = getUsernameText(name);
+    }
+
     function loadAvatar(callback) {
       const loader = new GLTFLoader();
       loader.load('models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
@@ -469,6 +506,13 @@
     window.setAvatarColor = function (color) {
       avatarColor = color;
       setAvatarColorOfModel(model, color);
+    }
+
+    window.setUsername = function (name) {
+      console.log('setUsername: ' + name);
+      username = name;
+
+      updateUsernameTextSprite(playerUsernameText, username);
     }
 
     init();
@@ -664,6 +708,10 @@
         player = model;
 
         scene.add(model);
+
+        // add floating text above model
+        playerUsernameText = createUsernameTextSprite(username);
+        model.add(playerUsernameText);
 
         var result = setUpAnimations(model, gltf.animations, true);
 
@@ -1551,6 +1599,11 @@
           let avatarColor = info.avatarColor;
           setAvatarColorOfModel(model, avatarColor);
 
+          let username = info.username;
+          let usernameTextSprite = createUsernameTextSprite(username);
+          model.add(usernameTextSprite);
+          players[playerId].usernameTextSprite = usernameTextSprite;
+
           var position = info.position;
           model.position.set(
             position.x,
@@ -1667,9 +1720,12 @@
 
       let playerId = msg.playerId;
       let player = players[playerId];
+      let usernameTextSprite = player.usernameTextSprite;
+
       let state = msg.state;
       let emote = msg.emote;
       let expression = msg.expression;
+      let username = msg.username;
       let color = msg.color;
 
       if (state) {
@@ -1698,6 +1754,14 @@
         }
       }
 
+      if (username) {
+        try {
+          updateUsernameTextSprite(usernameTextSprite, username);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
       if (color) {
         try {
           setAvatarColorOfModel(player.avatar, color);
@@ -1713,6 +1777,7 @@
         state: info.state,
         emote: info.emote,
         expression: info.expression,
+        username: info.username,
         color: info.color
       });
     });

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@seregpie/three.text-sprite": "^3.2.0",
     "@tweenjs/tween.js": "^19.0.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
