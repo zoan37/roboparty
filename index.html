@@ -1214,6 +1214,12 @@
       let damping = Math.exp(- 4 * secondsPassed) - 1;
       let dampingY = damping;
 
+      // attempt to fix bug where player falls through floor when window is out of focus
+      if (secondsPassed > 3) {
+        damping = 0;
+        dampingY = 0;
+      }
+
       // const GRAVITY = 9.8 * 3.0;
       const MARS_GRAVITY_A = 3.721;
       const GRAVITY = 1.0 * MARS_GRAVITY_A * 3.0;
@@ -1636,7 +1642,7 @@
         }
       }
 
-      if (emote) {
+      if (emote && emote != "None") {
         try {
           console.log(player.animationInfo.actionFunctions.emote);
           player.animationInfo.actionFunctions.emote[emote]();
@@ -1653,6 +1659,15 @@
           console.error(e);
         }
       }
+    });
+
+    window.sendAnimationInfo = (info => {
+      socket.emit('action', {
+        playerId: playerId,
+        state: info.state,
+        emote: info.emote,
+        expression: info.expression
+      });
     });
 
     window.sendState = (state => {
@@ -1721,9 +1736,7 @@
   </script>
 
   <div id="app"></div>
-  <!--
   <script type="module" src="/src/main.js"></script>
-  -->
 </body>
 
 </html>
