@@ -66,9 +66,8 @@
 
     const crossFadeControls = [];
 
-    let idleAction, walkAction, runAction, swordSlashAction, heavySwingAction, heavySwingAction2;
-    let smeltingAction, hammeringAction;
-    let idleWeight, walkWeight, runWeight, swordSlashWeight, heavySwingWeight;
+    let idleAction, walkAction, runAction;
+    let idleWeight, walkWeight, runWeight;
     let actions, settings;
     settings = {};
 
@@ -100,38 +99,18 @@
 
     var isJoystickActive = false;
 
-    var moveTargetPosition = null;
-    var moveTargetDistance = null;
-    var moveTargetCallback = null;
-
-    var pickaxeSound = null;
-    var smeltingSound = null;
-    var hammeringSound = null;
-    var swordHitSound = null;
-    var robotTerminatedSound = null;
-
     var playerOnFloor = false;
 
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const intersectObjects = [];
-    var currentIntersectObject = null;
-
-    var isMining = false;
-    var isSmelting = false;
-    var isSmithing = false;
-    var isFighting = false;
-
-    var fightTarget = null;
-
-    var smithingStrikeCount = 0;
 
 
     // animation
     let mixer, activeAction, previousAction, gui, face;
-    const api = {state: 'Idle'};
-    const actionFunctions = {
+    let api = {state: 'Idle'};
+    let actionFunctions = {
       state: {},
       emote: {},
       expression: null
@@ -652,7 +631,14 @@
 
         scene.add(model);
 
-        createGUI(model, gltf.animations);
+        var result = setUpAnimations(model, gltf.animations, true);
+
+        gui = result.gui;
+        api = result.api;
+        actionFunctions = result.actionFunctions;
+        mixer = result.mixer;
+        activeAction = result.activeAction;
+        actions = result.actions;
 
         // model.position.setY(100)
 
@@ -1302,20 +1288,29 @@
 
 
     // animation
-    function createGUI(model, animations) {
+    function setUpAnimations(model, animations, isGUI) {
 
       const states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
       const emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
 
-      gui = new GUI();
+      let gui = null;
+      let api = {state: 'Idle'};
+      let actionFunctions = {
+        state: {},
+        emote: {},
+        expression: null
+      };;
+      if (isGUI) gui = new GUI();
 
+      /*
       window.gui = gui;
       window.api = api;
       window.actionFunctions = actionFunctions;
+      */
 
-      mixer = new THREE.AnimationMixer(model);
+      let mixer = new THREE.AnimationMixer(model);
 
-      actions = {};
+      let actions = {};
 
       for (let i = 0; i < animations.length; i++) {
 
@@ -1334,15 +1329,19 @@
 
       // states
 
-      const statesFolder = gui.addFolder('States');
+      if (isGUI) {
+        const statesFolder = gui.addFolder('States');
 
-      const clipCtrl = statesFolder.add(api, 'state').options(states);
+        const clipCtrl = statesFolder.add(api, 'state').options(states);
 
-      clipCtrl.onChange(function () {
+        clipCtrl.onChange(function () {
 
-        fadeToAction(api.state, 0.5);
+          fadeToAction(api.state, 0.5);
 
-      });
+        });
+
+        statesFolder.open();
+      }
 
       for (var i = 0; i < states.length; i++) {
         const state = states[i];
@@ -1351,24 +1350,34 @@
         };
       };
 
-      statesFolder.open();
 
       // emotes
 
-      const emoteFolder = gui.addFolder('Emotes');
+      if (isGUI) {
 
-      function createEmoteCallback(name) {
+        const emoteFolder = gui.addFolder('Emotes');
 
-        api[name] = function () {
+        function createEmoteCallback(name) {
 
-          fadeToAction(name, 0.2);
+          api[name] = function () {
 
-          mixer.addEventListener('finished', restoreState);
+            fadeToAction(name, 0.2);
 
-        };
+            mixer.addEventListener('finished', restoreState);
 
-        emoteFolder.add(api, name);
+          };
 
+          emoteFolder.add(api, name);
+
+        }
+
+        for (let i = 0; i < emotes.length; i++) {
+
+          createEmoteCallback(emotes[i]);
+
+        }
+
+        emoteFolder.open();
       }
 
       for (var i = 0; i < emotes.length; i++) {
@@ -1388,57 +1397,59 @@
 
       }
 
-      for (let i = 0; i < emotes.length; i++) {
-
-        createEmoteCallback(emotes[i]);
-
-      }
-
-      emoteFolder.open();
-
       // expressions
 
-      face = model.getObjectByName('Head_4');
+      let face = model.getObjectByName('Head_4');
 
-      const expressions = Object.keys(face.morphTargetDictionary);
-      const expressionFolder = gui.addFolder('Expressions');
+      if (isGUI) {
+        const expressions = Object.keys(face.morphTargetDictionary);
+        const expressionFolder = gui.addFolder('Expressions');
 
-      for (let i = 0; i < expressions.length; i++) {
+        for (let i = 0; i < expressions.length; i++) {
 
-        expressionFolder.add(face.morphTargetInfluences, i, 0, 1, 0.01).name(expressions[i]);
+          expressionFolder.add(face.morphTargetInfluences, i, 0, 1, 0.01).name(expressions[i]);
 
-      }
-
-      function tweenExpressions(sourceVector, targetVector) {
-        const coords = {
-          x: sourceVector[0],
-          y: sourceVector[1],
-          z: sourceVector[2]
-        };
-        new TWEEN.Tween(coords)
-          .to({
-            x: targetVector[0],
-            y: targetVector[1],
-            z: targetVector[2]
-          }, 300)
-          .easing(TWEEN.Easing.Quadratic.Out)
-          .onUpdate(function () {
-            face.morphTargetInfluences[0] = coords.x;
-            face.morphTargetInfluences[1] = coords.y;
-            face.morphTargetInfluences[2] = coords.z;
-          })
-          .start();
+        }
+        expressionFolder.open();
       }
 
       actionFunctions.expression = function (vector) {
-        tweenExpressions(face.morphTargetInfluences, vector);
+        tweenExpressions(face.morphTargetInfluences, vector, face);
       }
 
       activeAction = actions['Idle'];
-      activeAction.play();
+      // activeAction.play();
 
-      expressionFolder.open();
+      return {
+        gui: gui,
+        api: api,
+        actionFunctions: actionFunctions,
+        mixer: mixer,
+        activeAction: activeAction,
+        actions: actions
+      }
 
+    }
+
+    function tweenExpressions(sourceVector, targetVector, face) {
+      const coords = {
+        x: sourceVector[0],
+        y: sourceVector[1],
+        z: sourceVector[2]
+      };
+      new TWEEN.Tween(coords)
+        .to({
+          x: targetVector[0],
+          y: targetVector[1],
+          z: targetVector[2]
+        }, 300)
+        .easing(TWEEN.Easing.Quadratic.Out)
+        .onUpdate(function () {
+          face.morphTargetInfluences[0] = coords.x;
+          face.morphTargetInfluences[1] = coords.y;
+          face.morphTargetInfluences[2] = coords.z;
+        })
+        .start();
     }
 
     function fadeToAction(name, duration) {
