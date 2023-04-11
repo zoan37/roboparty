@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@seregpie/three.text-sprite": "^3.2.0",
     "@tweenjs/tween.js": "^19.0.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -17,6 +16,7 @@
     "socket.io": "^4.6.1",
     "socket.io-client": "^4.6.1",
     "three": "^0.151.3",
+    "three-spritetext": "^1.8.0",
     "vue": "^3.2.47"
   },
   "devDependencies": {

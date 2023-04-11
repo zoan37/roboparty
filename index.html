@@ -57,7 +57,7 @@
 
     import {io} from "socket.io-client";
 
-    import TextSprite from '@seregpie/three.text-sprite';
+    import SpriteText from 'three-spritetext';
 
     let controls;
 
@@ -431,32 +431,25 @@
 
     function getUsernameText(name) {
       return [
-          ' ',
-          ' ',
-          ' ',
-          ' ',
-          '\n\n\n\n\n ' + name + ' \n\n\n\n\n', // pad with lines to get rid of text cut in half glitch
-          ' ',
-          ' ',
-          ' ',
-          ' ',
-        ].join('\n');
+        ' ',
+        ' ',
+        ' ',
+        ' ',
+        '\n\n\n\n\n      ' + name + '      \n\n\n\n\n', // pad with lines to get rid of text cut in half glitch
+        ' ',
+        ' ',
+        ' ',
+        ' ',
+      ].join('\n');
     }
 
     function createUsernameTextSprite(name) {
-      let text = new TextSprite({
-        alignment: 'center',
-        color: '#ffffff',
-        fontFamily: 'sans-serif',
-        fontSize: 1,
-        padding: 10,
-        lineGap: 20, // line gap is needed to prevent text cut in half glitch
-        // fontStyle: 'italic',
-        text: getUsernameText(name),
-      });
-      text.position.set(0, 6, 0);
 
-      return text;
+      const myText = new SpriteText(name, 1, 'white');
+      myText.fontFace = 'sans-serif';
+      myText.position.set(0, 6, 0);
+
+      return myText;
     }
 
     function updateUsernameTextSprite(textSprite, name) {
