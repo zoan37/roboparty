@@ -1701,10 +1701,22 @@
     var playerId = uuidv4();
 
     socket.on('chat_message', function (msg) {
+      console.log('received chat message')
       console.log(msg);
 
-      // showChatMessage(msg);
+      msg.isUserSender = playerId == msg.playerId;
+
+      window.receiveChatMessage(msg);
     });
+
+    window.sendChatMessage = function (message) {
+      console.log('sendChatMessage: ' + message);
+      socket.emit('chat_message', {
+        playerId: playerId,
+        username: username,
+        message: message
+      });
+    }
 
     socket.on('position', function (msg) {
       // console.log(msg);

@@ -38,10 +38,8 @@ function startServer() {
     io.on('connection', (socket) => {
         console.log('a user connected');
 
-        io.emit('chat message', 'yo!');
-
-        socket.on('chat message', (msg) => {
-            io.emit('chat message', msg);
+        socket.on('chat_message', (msg) => {
+            io.emit('chat_message', msg);
         });
 
         socket.on('position', (msg) => {

@@ -5,8 +5,12 @@ import { ref, reactive, onMounted, toRaw, watch } from 'vue'
 const messageInput = ref(null)
 const chatMessagesEnd = ref(null);
 
+const roomChatMessageInput = ref(null);
+const roomChatMessagesEnd = ref(null);
+
 const state = reactive({
   messageHistory: [],
+  roomChatMessageHistory: [],
   isChatting: false
 })
 
@@ -20,8 +24,10 @@ watch(() => state.isChatting,
   });
 
 const messageHistory = state.messageHistory;
+const roomChatMessageHistory = state.roomChatMessageHistory;
 
 window.messageHistory = messageHistory;
+window.roomChatMessageHistory = roomChatMessageHistory;
 
 const actionHistory = [];
 
@@ -38,6 +44,14 @@ function scrollToBottom() {
     behavior: "smooth"
   });
 }
+
+function roomChatScrollToBottom() {
+  roomChatMessagesEnd.value.scrollIntoView({
+    behavior: "smooth"
+  });
+}
+
+window.roomChatScrollToBottom = roomChatScrollToBottom;
 
 function submitScrollRequest() {
   if (scrollRequestQueue.length == 0) {
@@ -258,11 +272,46 @@ async function formSendMessage() {
   });
 }
 
+async function roomChatSendMessage() {
+  var inputMessage = roomChatMessageInput.value.value;
+  console.log('inputMessage:');
+  console.log(inputMessage);
+
+  roomChatMessageInput.value.value = '';
+
+  window.sendChatMessage(inputMessage);
+}
+
+window.receiveChatMessage = (message) => {
+  console.log('received message:');
+  console.log(message);
+
+  roomChatMessageHistory.push(message);
+
+  if (message.isUserSender) {
+    // user just sent message, scroll to the bottom
+    setTimeout(() => {
+      roomChatScrollToBottom();
+    }, 100); // wait for UI to render new message
+  }
+
+  // if user is at the bottom of the chat, scroll to the bottom
+  const container = document.getElementById('room_chat_message_box');
+  if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+    setTimeout(() => {
+      roomChatScrollToBottom();
+    }, 100); // wait for UI to render new message
+  }
+};
+
 onMounted(() => {
   console.log('app mounted');
 
   // stop chat input from causing WASD movements
   $('#ai_chat_input').keydown(function (e) {
+    e.stopPropagation();
+  });
+  $('#room_chat_input').keydown(function (e) {
     e.stopPropagation();
   });
 });
@@ -286,7 +335,7 @@ onMounted(() => {
         </div>
 
         <div class="input-group">
-          <input type="text" class="form-control" placeholder="Type a message" aria-label="Type a message"
+          <input type="text" class="form-control" placeholder="Message for AI" aria-label="Message for AI"
             aria-describedby="button-addon2" ref="messageInput" id="ai_chat_input" v-on:keyup.enter="formSendMessage">
           <button class="btn btn-outline-secondary" type="button" id="button-addon2"
             @click="formSendMessage">Send</button>
@@ -298,8 +347,25 @@ onMounted(() => {
       </div>
     </div>
 
-    <div id="info_area">
+    <div id="room_chat_area">
+      <div id="room_chat_message_box">
+        <div v-for="(message, index) in state.roomChatMessageHistory">
+          <div v-bind:class="message.isUserSender ? 'user_message' : 'assistant_message'">
+            <div class="message_span">
+              <b>{{ message.username }}:</b> {{ message.message }}
+            </div>
+          </div>
+        </div>
+        <div ref="roomChatMessagesEnd"></div>
+      </div>
 
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Message for room" aria-label="Message for room"
+          aria-describedby="button-addon2" ref="roomChatMessageInput" id="room_chat_input"
+          v-on:keyup.enter="roomChatSendMessage">
+        <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+          @click="roomChatSendMessage">Send</button>
+      </div>
     </div>
 
     <div id="settings_area">
@@ -331,17 +397,18 @@ onMounted(() => {
             avatar color, perform different moves, emotes, and facial expressions, or have general conversations.
           </div>
           <div class="mb-3">
-            <b>Controls:</b> 
+            <b>Controls:</b>
             <ul>
               <li>WASD or arrow keys to move</li>
               <li>Click and drag mouse to look around</li>
+              <li>Scroll to zoom in and out</li>
               <li>Talk to the AI to change username and avatar color</li>
               <li>Talk to the AI to perform different moves, emotes, and facial expressions</li>
             </ul>
           </div>
           <div>
-            Powered by <a target="_blank" href="https://windowai.io/">window.ai</a> and <a
-              target="_blank" href="https://threejs.org/">three.js</a>.
+            Powered by <a target="_blank" href="https://windowai.io/">window.ai</a> and <a target="_blank"
+              href="https://threejs.org/">three.js</a>.
             Made by <a target="_blank" href="https://twitter.com/zoan37">zoan.eth</a>. View <a target="_blank"
               href="https://github.com/zoan37/roboparty">source code on GitHub</a>.
           </div>
@@ -414,16 +481,29 @@ onMounted(() => {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-#info_area {
+#room_chat_area {
   position: absolute;
   bottom: 5px;
   right: 0px;
   padding: 20px;
   background-color: transparent;
-  max-width: 400px;
+  width: 350px;
+}
+
+#room_chat_message_box {
+  overflow-y: scroll;
+  height: 500px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 #ai_chat_input {
+  background-color: rgb(255, 255, 255, 0.25);
+}
+
+#room_chat_input {
   background-color: rgb(255, 255, 255, 0.25);
 }
 </style>
