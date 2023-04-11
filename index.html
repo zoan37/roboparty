@@ -642,6 +642,8 @@
         actions = result.actions;
         actionStateInfo = result.actionStateInfo;
 
+        window.animationInfo = result;
+
         // model.position.setY(100)
 
         animate();
@@ -1305,7 +1307,7 @@
         state: {},
         emote: {},
         expression: null
-      };;
+      };
       if (isGUI) gui = new GUI();
 
       /*
@@ -1607,7 +1609,7 @@
     });
 
     socket.on('position', function (msg) {
-      console.log(msg);
+      // console.log(msg);
 
       try {
         updatePlayer(msg);
@@ -1615,6 +1617,28 @@
         console.error(e);
       }
       // showChatMessage(msg);
+    });
+
+    socket.on('action', function (msg) {
+      console.log(msg);
+
+      if (msg.emote) {
+        try {
+          var playerId = msg.playerId;
+          var player = players[playerId];
+          console.log(player.animationInfo.actionFunctions.emote);
+          player.animationInfo.actionFunctions.emote[msg.emote]();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    window.sendEmote = (emote => {
+      socket.emit('action', {
+        playerId: playerId,
+        emote: emote
+      });
     });
 
     socket.on('leave', function (msg) {
