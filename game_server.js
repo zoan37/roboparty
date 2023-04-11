@@ -48,8 +48,8 @@ function startServer() {
             // console.log('position', msg);
             socket.broadcast.emit('position', msg);
 
-            userMap[msg.userId] = msg;
-            socketMap[socket.id] = msg.userId;
+            userMap[msg.playerId] = msg;
+            socketMap[socket.id] = msg.playerId;
         });
 
         socket.on('action', (msg) => {
@@ -59,13 +59,13 @@ function startServer() {
 
         socket.on('disconnect', () => {
             console.log('user disconnected');
-            var userId = socketMap[socket.id];
-            var user = userMap[userId];
+            var playerId = socketMap[socket.id];
+            var user = userMap[playerId];
 
             socket.broadcast.emit('leave', user);
 
             delete socketMap[socket.id];
-            delete userMap[userId];
+            delete userMap[playerId];
         });
     });
 

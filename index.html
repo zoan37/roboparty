@@ -108,7 +108,7 @@
 
 
     // animation
-    let mixer, activeAction, previousAction, gui, face;
+    let mixer, actionStateInfo, gui, face;
     let api = {state: 'Idle'};
     let actionFunctions = {
       state: {},
@@ -119,6 +119,8 @@
 
 
     var players = {};
+
+    window.players = players;
 
     const worldOctree = new Octree();
 
@@ -637,8 +639,8 @@
         api = result.api;
         actionFunctions = result.actionFunctions;
         mixer = result.mixer;
-        activeAction = result.activeAction;
         actions = result.actions;
+        actionStateInfo = result.actionStateInfo;
 
         // model.position.setY(100)
 
@@ -1175,12 +1177,14 @@
       for (const pId in players) {
         var p = players[pId];
 
-        p.avatar.quaternion.rotateTowards(new THREE.Quaternion(
-          p.info.quaternion.x,
-          p.info.quaternion.y,
-          p.info.quaternion.z,
-          p.info.quaternion.w
-        ), step);
+        if (p.avatar) {
+          p.avatar.quaternion.rotateTowards(new THREE.Quaternion(
+            p.info.quaternion.x,
+            p.info.quaternion.y,
+            p.info.quaternion.z,
+            p.info.quaternion.w
+          ), step);
+        }
       }
 
       if (moveUp || moveDown || moveLeft || moveRight) {
@@ -1267,7 +1271,9 @@
       for (const pId in players) {
         var p = players[pId];
 
-        // p.mixer.update(mixerUpdateDelta);
+        if (p.animationInfo) {
+          p.animationInfo.mixer.update(mixerUpdateDelta);
+        }
       }
 
       updatePlayerCollider();
@@ -1417,16 +1423,41 @@
         tweenExpressions(face.morphTargetInfluences, vector, face);
       }
 
-      activeAction = actions['Idle'];
-      // activeAction.play();
+      let actionStateInfo = {
+        previousAction: null,
+        activeAction: null
+      };
+
+      actionStateInfo.activeAction = actions['Idle'];
+      actionStateInfo.activeAction.play();
+
+      function fadeToAction(name, duration) {
+
+        actionStateInfo.previousAction = actionStateInfo.activeAction;
+        actionStateInfo.activeAction = actions[name];
+
+        if (actionStateInfo.previousAction !== actionStateInfo.activeAction) {
+
+          actionStateInfo.previousAction.fadeOut(duration);
+
+        }
+
+        actionStateInfo.activeAction
+          .reset()
+          .setEffectiveTimeScale(1)
+          .setEffectiveWeight(1)
+          .fadeIn(duration)
+          .play();
+
+      }
 
       return {
         gui: gui,
         api: api,
         actionFunctions: actionFunctions,
         mixer: mixer,
-        activeAction: activeAction,
-        actions: actions
+        actions: actions,
+        actionStateInfo: actionStateInfo
       }
 
     }
@@ -1452,26 +1483,6 @@
         .start();
     }
 
-    function fadeToAction(name, duration) {
-
-      previousAction = activeAction;
-      activeAction = actions[name];
-
-      if (previousAction !== activeAction) {
-
-        previousAction.fadeOut(duration);
-
-      }
-
-      activeAction
-        .reset()
-        .setEffectiveTimeScale(1)
-        .setEffectiveWeight(1)
-        .fadeIn(duration)
-        .play();
-
-    }
-
 
 
 
@@ -1480,15 +1491,20 @@
       var playerId = info.playerId;
 
       if (!players[playerId]) {
+        // set info here to prevent race condition of loading multiple avatars for same player ID
+        players[playerId] = {
+          info: info,
+          avatar: null,
+          timestamp: Date.now()
+        };
+
         loadAvatar(function (gltf) {
           let model = gltf.scene;
           scene.add(model);
 
-          players[playerId] = {
-            info: info,
-            avatar: model,
-            timestamp: Date.now()
-          };
+          console.log('Loading avatar for player ID: ' + playerId);
+
+          players[playerId].avatar = model;
 
           var position = info.position;
           model.position.set(
@@ -1504,49 +1520,70 @@
             quaternion.z,
             quaternion.w
           );
+
+          var result = setUpAnimations(model, gltf.animations, false);
+          players[playerId].animationInfo = result;
+
+          /*
+          api = result.api;
+          actionFunctions = result.actionFunctions;
+          mixer = result.mixer;
+          actions = result.actions;
+          actionStateInfo = result.actionStateInfo;
+          */
         });
       } else {
         var avatar = players[playerId].avatar;
-        var position = info.position;
-        var quaternion = info.quaternion;
-        var deltaTime = Date.now() - players[playerId].timestamp;
-        players[playerId].timestamp = Date.now();
 
-        const coords = {
-          x: avatar.position.x,
-          y: avatar.position.y,
-          z: avatar.position.z
-        };
-        const tween = new TWEEN.Tween(avatar.position) // Create a new tween that modifies 'coords'.
-          .to({
-            x: position.x,
-            y: position.y,
-            z: position.z,
-          }, deltaTime) // Move to (300, 200) in 1 second.
-          .easing(TWEEN.Easing.Linear.None) // Use an easing function to make the animation smooth.
-          .onUpdate(() => {
-            // Called after tween.js updates 'coords'.
-            // Move 'box' to the position described by 'coords' with a CSS translation.
-            // box.style.setProperty('transform', `translate(${coords.x}px, ${coords.y}px)`)
+        if (avatar) {
 
-            /*
-            avatar.position.set(
-              coords.x,
-              coords.y,
-              coords.z
-            );
-            */
-          })
-          .start() // Start the tween immediately.
+          var position = info.position;
+          var quaternion = info.quaternion;
+          var deltaTime = Date.now() - players[playerId].timestamp;
+          players[playerId].timestamp = Date.now();
+
+          const coords = {
+            x: avatar.position.x,
+            y: avatar.position.y,
+            z: avatar.position.z
+          };
+          const tween = new TWEEN.Tween(avatar.position) // Create a new tween that modifies 'coords'.
+            .to({
+              x: position.x,
+              y: position.y,
+              z: position.z,
+            }, deltaTime) // Move to (300, 200) in 1 second.
+            .easing(TWEEN.Easing.Linear.None) // Use an easing function to make the animation smooth.
+            .onUpdate(() => {
+              // Called after tween.js updates 'coords'.
+              // Move 'box' to the position described by 'coords' with a CSS translation.
+              // box.style.setProperty('transform', `translate(${coords.x}px, ${coords.y}px)`)
+
+              /*
+              avatar.position.set(
+                coords.x,
+                coords.y,
+                coords.z
+              );
+              */
+            })
+            .start() // Start the tween immediately.
+        }
 
         players[playerId].info = info;
       }
     }
 
     function removePlayer(info) {
-      var playerId = info.playerId;
+      let playerId = info.playerId;
 
-      players[playerId].avatar.removeFromParent();
+      console.log('Players:');
+      console.log(players);
+      console.log('Removing player with ID: ' + playerId);
+
+      if (players[playerId].avatar) {
+        players[playerId].avatar.removeFromParent();
+      }
 
       delete players[playerId];
     }
@@ -1572,14 +1609,22 @@
     socket.on('position', function (msg) {
       console.log(msg);
 
-      updatePlayer(msg);
+      try {
+        updatePlayer(msg);
+      } catch (e) {
+        console.error(e);
+      }
       // showChatMessage(msg);
     });
 
     socket.on('leave', function (msg) {
       console.log(msg);
 
-      removePlayer(msg);
+      try {
+        removePlayer(msg);
+      } catch (e) {
+        console.error(e);
+      }
       // showChatMessage(msg);
     });
 
