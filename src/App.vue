@@ -51,6 +51,12 @@ function roomChatScrollToBottom() {
   });
 }
 
+function roomChatInstantScrollToBottom() {
+  roomChatMessagesEnd.value.scrollIntoView({
+    behavior: "instant"
+  });
+}
+
 window.roomChatScrollToBottom = roomChatScrollToBottom;
 
 function submitScrollRequest() {
@@ -286,13 +292,15 @@ window.receiveChatMessage = (message) => {
   console.log('received message:');
   console.log(message);
 
+  message.receivedTimestamp = Date.now();
+
   roomChatMessageHistory.push(message);
 
   if (message.isUserSender) {
     // user just sent message, scroll to the bottom
     setTimeout(() => {
       roomChatScrollToBottom();
-    }, 100); // wait for UI to render new message
+    }, 10); // wait for UI to render new message
   }
 
   // if user is at the bottom of the chat, scroll to the bottom
@@ -300,9 +308,38 @@ window.receiveChatMessage = (message) => {
   if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
     setTimeout(() => {
       roomChatScrollToBottom();
-    }, 100); // wait for UI to render new message
+      $('#new_messages_button_container').fadeOut();
+    }, 10); // wait for UI to render new message
+  } else {
+    
   }
 };
+
+// super hacky
+function conditionalShowNewMessagesButtonContainer() {
+  const container = document.getElementById('room_chat_message_box');
+  if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+    // $('#new_messages_button_container').hide();
+  } else {
+    $('#new_messages_button_container').fadeIn();
+  }
+}
+
+// hacky way to make new message button container disappear
+setInterval(function () {
+  try {
+    const container = document.getElementById('room_chat_message_box');
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+      $('#new_messages_button_container').fadeOut();
+    } else {
+      setTimeout(function() {
+        conditionalShowNewMessagesButtonContainer();
+      }, 1000); // wait to see if scrolling is finished
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}, 100);
 
 onMounted(() => {
   console.log('app mounted');
@@ -314,6 +351,12 @@ onMounted(() => {
   $('#room_chat_input').keydown(function (e) {
     e.stopPropagation();
   });
+
+  $('#new_messages_button').click(function (e) {
+    roomChatScrollToBottom();
+  });
+
+  $('#new_messages_button_container').hide();
 });
 
 
@@ -359,12 +402,21 @@ onMounted(() => {
         <div ref="roomChatMessagesEnd"></div>
       </div>
 
-      <div class="input-group">
-        <input type="text" class="form-control" placeholder="Message for room" aria-label="Message for room"
-          aria-describedby="button-addon2" ref="roomChatMessageInput" id="room_chat_input"
-          v-on:keyup.enter="roomChatSendMessage">
-        <button class="btn btn-outline-secondary" type="button" id="button-addon2"
-          @click="roomChatSendMessage">Send</button>
+      <div id="room_chat_input_container">
+        <div id="new_messages_button_container"
+          style="position: absolute; text-align: center; background-color: transparent; width: 100%; height: 100%; bottom: 60px;">
+          <span style="padding: 10px; cursor: pointer; border-radius: 3px; background-color: rgba(255, 255, 255, 0.2);"
+            id="new_messages_button">
+            New messages
+          </span>
+        </div>
+        <div class="input-group">
+          <input type="text" class="form-control" placeholder="Message for room" aria-label="Message for room"
+            aria-describedby="button-addon2" ref="roomChatMessageInput" id="room_chat_input"
+            v-on:keyup.enter="roomChatSendMessage">
+          <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+            @click="roomChatSendMessage">Send</button>
+        </div>
       </div>
     </div>
 
@@ -505,5 +557,9 @@ onMounted(() => {
 
 #room_chat_input {
   background-color: rgb(255, 255, 255, 0.25);
+}
+
+#room_chat_input_container {
+  position: relative;
 }
 </style>
