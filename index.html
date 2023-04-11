@@ -1622,22 +1622,57 @@
     socket.on('action', function (msg) {
       console.log(msg);
 
-      if (msg.emote) {
+      let playerId = msg.playerId;
+      let player = players[playerId];
+      let state = msg.state;
+      let emote = msg.emote;
+      let expression = msg.expression;
+
+      if (state) {
         try {
-          var playerId = msg.playerId;
-          var player = players[playerId];
+          player.animationInfo.actionFunctions.state[state]();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (emote) {
+        try {
           console.log(player.animationInfo.actionFunctions.emote);
-          player.animationInfo.actionFunctions.emote[msg.emote]();
+          player.animationInfo.actionFunctions.emote[emote]();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (expression) {
+        try {
+          console.log(player.animationInfo.actionFunctions.expression);
+          player.animationInfo.actionFunctions.expression(expression);
         } catch (e) {
           console.error(e);
         }
       }
     });
 
+    window.sendState = (state => {
+      socket.emit('action', {
+        playerId: playerId,
+        state: state
+      });
+    });
+
     window.sendEmote = (emote => {
       socket.emit('action', {
         playerId: playerId,
         emote: emote
+      });
+    });
+
+    window.sendExpression = (expression => {
+      socket.emit('action', {
+        playerId: playerId,
+        expression: expression
       });
     });
 
