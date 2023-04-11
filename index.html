@@ -101,6 +101,9 @@
 
     var playerOnFloor = false;
 
+    var avatarColor = '0xff990b';
+    var username = 'Guest';
+
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -427,10 +430,15 @@
       const loader = new GLTFLoader();
       loader.load('models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
 
+        console.log('avatar gltf:');
+        console.log(gltf);
+
         let model = gltf.scene;
 
         const modelSize = 0.4;
         model.scale.set(modelSize, modelSize, modelSize);
+
+        setAvatarColorOfModel(model, avatarColor);
 
         callback(gltf);
 
@@ -441,9 +449,33 @@
       });
     }
 
+    function setAvatarColorOfModel(model, color) {
+      console.log('setAvatarColor: ' + color);
+
+      // var convertedColor = new THREE.Color(Number(color)).convertSRGBToLinear()
+
+      // traverse model and set color of material
+      model.traverse(function (child) {
+        if (child.isMesh) {
+          // console.log(child)
+          if (child.material.name == 'Main') {
+            // child.material.color.set(convertedColor);
+            child.material.color.setHex(Number(color));
+          }
+        }
+      });
+    }
+
+    window.setAvatarColor = function (color) {
+      avatarColor = color;
+      setAvatarColorOfModel(model, color);
+    }
+
     init();
 
     function init() {
+      THREE.ColorManagement.enabled = true;
+
       // key events
       document.body.addEventListener("keydown", function (e) {
         keys[e.keyCode] = true;
@@ -924,6 +956,14 @@
 
     }
 
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        velX = 0;
+        velPlayerY = 0; // try to prevent player from falling through the floor
+        velY = 0;
+      }
+    })
+
     let secondsPassed;
     let oldTimeStamp;
     let fps;
@@ -1209,16 +1249,10 @@
 
       // velPlayerY -= 9.8 * 3.0 * secondsPassed; // 100.0 = mass
 
-      // damping reduces jitter, and prevents the player from falling through the ground
+      // damping reduces jitter, and helps prevents the player from falling through the ground
       // when window is out of focus
       let damping = Math.exp(- 4 * secondsPassed) - 1;
       let dampingY = damping;
-
-      // attempt to fix bug where player falls through floor when window is out of focus
-      if (secondsPassed > 3) {
-        damping = 0;
-        dampingY = 0;
-      }
 
       // const GRAVITY = 9.8 * 3.0;
       const MARS_GRAVITY_A = 3.721;
@@ -1514,6 +1548,9 @@
 
           players[playerId].avatar = model;
 
+          let avatarColor = info.avatarColor;
+          setAvatarColorOfModel(model, avatarColor);
+
           var position = info.position;
           model.position.set(
             position.x,
@@ -1633,6 +1670,7 @@
       let state = msg.state;
       let emote = msg.emote;
       let expression = msg.expression;
+      let color = msg.color;
 
       if (state) {
         try {
@@ -1659,6 +1697,14 @@
           console.error(e);
         }
       }
+
+      if (color) {
+        try {
+          setAvatarColorOfModel(player.avatar, color);
+        } catch (e) {
+          console.error(e);
+        }
+      }
     });
 
     window.sendAnimationInfo = (info => {
@@ -1666,7 +1712,8 @@
         playerId: playerId,
         state: info.state,
         emote: info.emote,
-        expression: info.expression
+        expression: info.expression,
+        color: info.color
       });
     });
 
@@ -1726,7 +1773,9 @@
           y: quat.y,
           z: quat.z,
           w: quat.w
-        }
+        },
+        avatarColor: avatarColor,
+        username: username
       });
     }
 
