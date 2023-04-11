@@ -129,11 +129,12 @@
 
     const worldOctree = new Octree();
 
-    const CAPSULE_HEIGHT = 1;
-    const playerCollider = new Capsule(new THREE.Vector3(0, 0.35 + playerY, 0), new THREE.Vector3(0, CAPSULE_HEIGHT + playerY, 0), 0.35);
+    const CAPSULE_HEIGHT_A = 1; // 0.35
+    const CAPSULE_HEIGHT_B = 2; // 0.1
+    const playerCollider = new Capsule(new THREE.Vector3(0, CAPSULE_HEIGHT_A + playerY, 0), new THREE.Vector3(0, CAPSULE_HEIGHT_B + playerY, 0), CAPSULE_HEIGHT_A);
 
     function updatePlayerCollider() {
-      playerCollider.set(new THREE.Vector3(x, 0.35 + playerY, y), new THREE.Vector3(x, CAPSULE_HEIGHT + playerY, y), 0.35)
+      playerCollider.set(new THREE.Vector3(x, CAPSULE_HEIGHT_A + playerY, y), new THREE.Vector3(x, CAPSULE_HEIGHT_B + playerY, y), CAPSULE_HEIGHT_A)
     }
 
     function playerCollisions() {
@@ -533,6 +534,8 @@
 
       let position = floorGeometry.attributes.position;
 
+      const BOUND_VALUE = 20;
+
       for (let i = 0, l = position.count; i < l; i++) {
 
         vertex.fromBufferAttribute(position, i);
@@ -541,8 +544,8 @@
         vertex.y += Math.random() * 0;
         // vertex.z += (Math.random() * 20 - 10) * ratio * 0.5;
 
-        if (Math.abs(vertex.x) > 12 || Math.abs(vertex.z) > 12) {
-          vertex.y += 1;
+        if (Math.abs(vertex.x) > BOUND_VALUE || Math.abs(vertex.z) > BOUND_VALUE) {
+          vertex.y += 1.5;
         }
 
         position.setXYZ(i, vertex.x, vertex.y, vertex.z);
@@ -564,7 +567,7 @@
 
         vertex.fromBufferAttribute(position, i);
 
-        color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, vertex.y * 0.1 + 0.47 + 0.05 * Math.random());
+        color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, vertex.y * 0.05 + 0.47 + 0.05 * Math.random());
         color.convertSRGBToLinear();
         // color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.86, Math.random() * -0.1 + 0.41);
         colorsFloor.push(color.r, color.g, color.b);
@@ -601,10 +604,12 @@
         worldOctree.fromGraphNode(objectGroup);
         const helper = new OctreeHelper(worldOctree);
 
-        helper.visible = true;
+        helper.visible = false;
         scene.add(helper);
 
-        scene.add(platform);
+        // scene.add(platform);
+
+        scene.add(objectGroup);
       });
 
 
@@ -626,6 +631,8 @@
         // createGUI(model, gltf.animations);
 
         // gui.hide();
+
+        animate();
 
       }, undefined, function (e) {
 
@@ -1271,8 +1278,6 @@
 
       renderer.render(scene, camera);
     }
-
-    animate();
 
   </script>
 
