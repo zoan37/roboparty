@@ -55,6 +55,8 @@
     import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
     import {Capsule} from 'three/addons/math/Capsule.js';
 
+    import { io } from "socket.io-client";
+
     let controls;
 
     var keys = [];
@@ -428,6 +430,24 @@
       });
     }
 
+    function loadAvatar(callback) {
+      const loader = new GLTFLoader();
+      loader.load('models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
+
+        let model = gltf.scene;
+
+        const modelSize = 0.4;
+        model.scale.set(modelSize, modelSize, modelSize);
+
+        callback(gltf);
+
+      }, undefined, function (e) {
+
+        console.error(e);
+
+      });
+    }
+
     init();
 
     function init() {
@@ -613,16 +633,10 @@
       });
 
 
-
-      const loader = new GLTFLoader();
-      loader.load('models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
-
+      loadAvatar(function (gltf) {
         model = gltf.scene;
 
         player = model;
-
-        const modelSize = 0.4;
-        model.scale.set(modelSize, modelSize, modelSize);
 
         scene.add(model);
 
@@ -633,11 +647,6 @@
         // gui.hide();
 
         animate();
-
-      }, undefined, function (e) {
-
-        console.error(e);
-
       });
 
 
@@ -1262,7 +1271,7 @@
       for (const pId in players) {
         var p = players[pId];
 
-        p.mixer.update(mixerUpdateDelta);
+        // p.mixer.update(mixerUpdateDelta);
       }
 
       updatePlayerCollider();
@@ -1278,6 +1287,147 @@
 
       renderer.render(scene, camera);
     }
+
+
+
+
+    function updatePlayer(info) {
+			var playerId = info.playerId;
+
+			if (!players[playerId]) {
+				loadAvatar(function (gltf) {
+					let model = gltf.scene;
+					scene.add(model);
+
+          players[playerId] = {
+						info: info,
+						avatar: model,
+						timestamp: Date.now()
+					};
+
+					var position = info.position;
+					model.position.set(
+						position.x,
+						position.y,
+						position.z
+					);
+
+					var quaternion = info.quaternion;
+					model.quaternion.set(
+						quaternion.x,
+						quaternion.y,
+						quaternion.z,
+						quaternion.w
+					);
+				});
+			} else {
+				var avatar = players[playerId].avatar;
+				var position = info.position;
+				var quaternion = info.quaternion;
+				var deltaTime = Date.now() - players[playerId].timestamp;
+				players[playerId].timestamp = Date.now();
+
+				const coords = {
+					x: avatar.position.x,
+					y: avatar.position.y,
+					z: avatar.position.z
+				};
+				const tween = new TWEEN.Tween(avatar.position) // Create a new tween that modifies 'coords'.
+					.to({
+						x: position.x,
+						y: position.y,
+						z: position.z,
+					}, deltaTime) // Move to (300, 200) in 1 second.
+					.easing(TWEEN.Easing.Linear.None) // Use an easing function to make the animation smooth.
+					.onUpdate(() => {
+						// Called after tween.js updates 'coords'.
+						// Move 'box' to the position described by 'coords' with a CSS translation.
+						// box.style.setProperty('transform', `translate(${coords.x}px, ${coords.y}px)`)
+
+						/*
+						avatar.position.set(
+							coords.x,
+							coords.y,
+							coords.z
+						);
+						*/
+					})
+					.start() // Start the tween immediately.
+
+				players[playerId].info = info;
+			}
+		}
+
+    function removePlayer(info) {
+			var playerId = info.playerId;
+
+			players[playerId].avatar.removeFromParent();
+
+			delete players[playerId];
+		}
+
+
+
+    // networking
+
+    let socketEndpoint = 'http://localhost:3002';
+    if (process.env.NODE_ENV == 'production') {
+        socketEndpoint = ''; // TODO: add ec2 instance endpoint
+    }
+    const socket = io(socketEndpoint);
+
+		var playerId = uuidv4();
+
+    socket.on('chat_message', function (msg) {
+			console.log(msg);
+
+			// showChatMessage(msg);
+		});
+
+		socket.on('position', function (msg) {
+			console.log(msg);
+
+			updatePlayer(msg);
+			// showChatMessage(msg);
+		});
+
+		socket.on('leave', function (msg) {
+			console.log(msg);
+
+			removePlayer(msg);
+			// showChatMessage(msg);
+		});
+
+    function emitPlayerInfo() {
+      if (!player) {
+        return;
+      }
+      
+			var pos = getPlayerPosition();
+			var quat = getPlayerQuaternion();
+
+			if (!pos) {
+				return;
+			}
+
+			socket.emit('position', {
+				playerId: playerId,
+				position: {
+					x: pos.x,
+					y: pos.y,
+					z: pos.z
+				},
+				quaternion: {
+					x: quat.x,
+					y: quat.y,
+					z: quat.z,
+					w: quat.w
+				}
+			});
+		}
+
+    // TODO: dynamically change delay based on number of players in room, to reduce lagginess
+		setInterval(emitPlayerInfo, 500);
 
   </script>
 
