@@ -15,7 +15,7 @@ function startServer() {
     const io = new Server(server, {
         cors: {
             // TODO: add origin for vercel app url
-            origin: ['http://127.0.0.1:5173', 'http://robotparty-377008664.us-east-2.elb.amazonaws.com'],
+            origin: ['http://127.0.0.1:5173', 'http://roboparty-181954572.us-east-2.elb.amazonaws.com'],
             methods: ["GET", "POST"]
         }
     });

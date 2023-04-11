@@ -1685,7 +1685,7 @@
 
     let socketEndpoint = 'http://localhost:3002';
     if (process.env.NODE_ENV == 'production') {
-      socketEndpoint = 'http://robotparty-377008664.us-east-2.elb.amazonaws.com:3003/'; // TODO: add ec2 instance endpoint
+      socketEndpoint = 'http://roboparty-181954572.us-east-2.elb.amazonaws.com:3003'; // TODO: add ec2 instance endpoint
     }
     const socket = io(socketEndpoint);
 
