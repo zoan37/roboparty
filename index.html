@@ -1799,6 +1799,32 @@
 
         try {
           updatePlayer(msg);
+
+          let player = players[msg.playerId];
+
+          if (msg.lastAnimationState) {
+            let state = msg.lastAnimationState;
+            if (state != player.playedLastAnimationState) {
+              try {
+                player.animationInfo.actionFunctions.state[state]();
+                player.playedLastAnimationState = state;
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }
+
+          if (msg.lastAnimationExpression) {
+            let expression = msg.lastAnimationExpression;
+            if (expression != player.playedLastAnimationExpression) {
+              try {
+                player.animationInfo.actionFunctions.expression(expression);
+                player.playedLastAnimationExpression = expression;
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }
         } catch (e) {
           console.error(e);
         }
@@ -1821,6 +1847,7 @@
         if (state) {
           try {
             player.animationInfo.actionFunctions.state[state]();
+            player.playedLastAnimationState = state;
           } catch (e) {
             console.error(e);
           }
@@ -1839,6 +1866,7 @@
           try {
             console.log(player.animationInfo.actionFunctions.expression);
             player.animationInfo.actionFunctions.expression(expression);
+            player.playedLastAnimationExpression = expression;
           } catch (e) {
             console.error(e);
           }
@@ -1861,6 +1889,9 @@
         }
       });
 
+      let lastAnimationState = null;
+      let lastAnimationExpression = null;
+
       window.sendAnimationInfo = (info => {
         socket.emit('action', {
           playerId: playerId,
@@ -1871,6 +1902,9 @@
           color: info.color,
           roomId: roomId
         });
+
+        lastAnimationState = info.state;
+        lastAnimationExpression = info.expression;
       });
 
       window.sendState = (state => {
@@ -1879,6 +1913,8 @@
           state: state,
           roomId: roomId
         });
+
+        lastAnimationState = state;
       });
 
       window.sendEmote = (emote => {
@@ -1895,6 +1931,8 @@
           expression: expression,
           roomId: roomId
         });
+
+        lastAnimationState = expression;
       });
 
       socket.on('leave', function (msg) {
@@ -1935,7 +1973,9 @@
           },
           avatarColor: avatarColor,
           username: username,
-          roomId: roomId
+          roomId: roomId,
+          lastAnimationState: lastAnimationState,
+          lastAnimationExpression: lastAnimationExpression
         });
       }
 
