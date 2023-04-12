@@ -15,7 +15,10 @@ function startServer() {
     const io = new Server(server, {
         cors: {
             // TODO: add origin for vercel app url
-            origin: ['http://127.0.0.1:5173', '*.vercel.app'],
+            origin: [
+                'http://127.0.0.1:5173', 
+                'http://roboparty-181954572.us-east-2.elb.amazonaws.com'
+            ],
             methods: ["GET", "POST"]
         }
     });
@@ -38,34 +41,46 @@ function startServer() {
     io.on('connection', (socket) => {
         console.log('a user connected');
 
-        io.emit('chat message', 'yo!');
-
-        socket.on('chat message', (msg) => {
-            io.emit('chat message', msg);
+        socket.on('chat_message', (msg) => {
+            const roomId = msg.roomId;
+            io.to(roomId).emit('chat_message', msg);
         });
 
         socket.on('position', (msg) => {
-            // console.log('position', msg);
-            socket.broadcast.emit('position', msg);
+            const roomId = msg.roomId;
 
+            // console.log('position', msg);
+            socket.to(roomId).emit('position', msg);
+
+            if (!userMap[msg.playerId]) {
+                socket.join(roomId);
+            }
             userMap[msg.playerId] = msg;
             socketMap[socket.id] = msg.playerId;
         });
 
         socket.on('action', (msg) => {
+            const roomId = msg.roomId;
+
             console.log('action', msg);
-            socket.broadcast.emit('action', msg);
+            socket.to(roomId).emit('action', msg);
         });
 
         socket.on('disconnect', () => {
-            console.log('user disconnected');
-            var playerId = socketMap[socket.id];
-            var user = userMap[playerId];
-
-            socket.broadcast.emit('leave', user);
-
-            delete socketMap[socket.id];
-            delete userMap[playerId];
+            try {
+                console.log('user disconnected');
+                var playerId = socketMap[socket.id];
+                var user = userMap[playerId];
+    
+                const roomId = user.roomId;
+    
+                socket.to(roomId).emit('leave', user);
+    
+                delete socketMap[socket.id];
+                delete userMap[playerId];
+            } catch (e) {
+                console.error(e);
+            }
         });
     });
 
