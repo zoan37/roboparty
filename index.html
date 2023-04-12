@@ -1401,6 +1401,12 @@
 
         playerY += (velPlayerY * secondsPassed);
 
+        // hack to prevent player from falling through the floor
+        // when the page takes a while to load, falling through the floor usually happens
+        if (playerY < 0) {
+          playerY = 0;
+        }
+
         // Render loop
 
         requestAnimationFrame(animate);
