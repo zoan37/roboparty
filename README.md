@@ -1,18 +1,9 @@
-# Vue 3 + TypeScript + Vite
+# RoboParty 🤖🎉
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+**Website:** http://roboparty-181954572.us-east-2.elb.amazonaws.com/
 
-## Recommended IDE Setup
+<img width="533" alt="Screen Shot 2023-04-11 at 9 16 36 PM" src="https://user-images.githubusercontent.com/104385984/231322476-8e3ab480-1cc9-4e42-be0d-f7a4c60acdd4.png">
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+RoboParty is a 3D world where you can party with friends using a robot avatar controlled by AI. It uses [window.ai](https://github.com/alexanderatallah/window.ai), which allows you to plug in your own AI model (e.g. GPT-3). You can talk to the AI to change your username and avatar color, perform different moves, emotes, and facial expressions, or have general conversations.
 
-## Type Support For `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
-
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+RoboParty is a multiplayer generalization of the [Robot Companion demo](https://github.com/zoan37/robot-companion).
