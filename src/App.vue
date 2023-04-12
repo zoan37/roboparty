@@ -311,7 +311,7 @@ window.receiveChatMessage = (message) => {
       $('#new_messages_button_container').fadeOut();
     }, 10); // wait for UI to render new message
   } else {
-    
+
   }
 };
 
@@ -332,7 +332,7 @@ setInterval(function () {
     if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
       $('#new_messages_button_container').fadeOut();
     } else {
-      setTimeout(function() {
+      setTimeout(function () {
         conditionalShowNewMessagesButtonContainer();
       }, 1000); // wait to see if scrolling is finished
     }
@@ -343,6 +343,13 @@ setInterval(function () {
 
 onMounted(() => {
   console.log('app mounted');
+
+  // check if URL is root, like http://127.0.0.1:5173 or http://127.0.0.1:5173/ or http://127.0.0.1:5173/?hello=1
+  const url = new URL(window.location);
+  if (url.pathname == '/') {
+    console.log('This is the root URL');
+    $('#interface_container').hide();
+  }
 
   // stop chat input from causing WASD movements
   $('#ai_chat_input').keydown(function (e) {
@@ -443,7 +450,7 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            RoboParty is a 3D world where you can party with friends using a robot avatar controlled by AI.
+            <a target="_blank" href="/">RoboParty</a> is a 3D world where you can party with friends using a robot avatar controlled by AI.
             It uses <a target="_blank" href="https://windowai.io/">window.ai</a>, which
             allows you to plug in your own AI model (e.g. GPT-3). You can talk to the AI to change your username and
             avatar color, perform different moves, emotes, and facial expressions, or have general conversations.
@@ -460,8 +467,7 @@ onMounted(() => {
           </div>
           <div>
             Powered by <a target="_blank" href="https://windowai.io/">window.ai</a> and <a target="_blank"
-              href="https://threejs.org/">three.js</a>.
-            Made by <a target="_blank" href="https://twitter.com/zoan37">zoan.eth</a>. View <a target="_blank"
+              href="https://threejs.org/">three.js</a>. View <a target="_blank"
               href="https://github.com/zoan37/roboparty">source code on GitHub</a>.
           </div>
         </div>

@@ -29,6 +29,49 @@
 </head>
 
 <body>
+  <div id="home_container">
+    <div class="container mt-3 mb-3">
+      <h1>RoboParty 🤖🎉</h1>
+
+      <div class="mt-3">
+        <button type="button" class="btn btn-primary btn-lg" id="create_room_button">Create Room</button>
+
+        <div class="alert alert-primary mt-3" role="alert" id="room_link_alert" style="display: none;">
+          Room link: <a href="#" class="alert-link" id="room_link_a"></a>
+        </div>
+      </div>
+
+      <hr />
+
+      <p>
+        RoboParty is a 3D world where you can party with friends using a robot avatar controlled by AI.
+        It uses <a target="_blank" href="https://windowai.io/">window.ai</a>, which
+        allows you to plug in your own AI model (e.g. GPT-3). You can talk to the AI to change your username and
+        avatar color, perform different moves, emotes, and facial expressions, or have general conversations.
+      </p>
+
+
+      <p>
+        The "Create Room" button creates a permalink to a room, which you can share with your friends.
+      </p>
+
+      <p>
+        <a target="_blank" href="https://github.com/zoan37/roboparty">Source code on GitHub</a>
+      </p>
+    </div>
+
+  </div>
+  <script>
+    // run here to avoid flickering of home container
+    // check if URL is root, like http://127.0.0.1:5173 or http://127.0.0.1:5173/ or http://127.0.0.1:5173/?hello=1
+    const url2 = new URL(window.location);
+    if (url2.pathname == '/') {
+      console.log('This is the root URL');
+    } else {
+      $('#home_container').hide();
+    }
+  </script>
+
   <div id="game_container"></div>
   <div id="info">
   </div>
@@ -47,9 +90,6 @@
   </script>
 
   <script type="module">
-
-    console.log(window);
-
     import * as THREE from 'three';
 
     import TWEEN from '@tweenjs/tween.js';
@@ -69,133 +109,6 @@
 
     import SpriteText from 'three-spritetext';
 
-    let controls;
-
-    var keys = [];
-
-    let scene, renderer, camera, stats;
-    let model, skeleton, clock;
-
-    const crossFadeControls = [];
-
-    let idleAction, walkAction, runAction;
-    let idleWeight, walkWeight, runWeight;
-    let actions, settings;
-    settings = {};
-
-    let singleStepMode = false;
-    let sizeOfNextStep = 0;
-
-    const PLAYER_Y = 0;
-
-    var x = 0;
-    var y = 0;
-    var playerY = 2; // set high enough above platform so player doesn't fall through
-    var velX = 0;
-    var velY = 0;
-    var velPlayerY = 0;
-    var velAngle = null;
-    const speed = 10;
-    const playerRotationSpeed = 5;
-
-    var player = null;
-    var playerUsernameText = null;
-
-    var isOrbitControlsActive = false;
-
-    var orbitDeltaVector = new THREE.Vector3(0, 2 * 4, -3 * 4);
-    var orbitDistance = orbitDeltaVector.length();
-
-    var lastDirectionVector = null;
-
-    var currentAnimationAction = null;
-
-    var isJoystickActive = false;
-
-    var playerOnFloor = false;
-
-    var avatarColor = '0xff990b';
-    var username = 'Guest';
-
-
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const intersectObjects = [];
-
-
-    // animation
-    let mixer, actionStateInfo, gui, face;
-    let api = {state: 'Idle'};
-    let actionFunctions = {
-      state: {},
-      emote: {},
-      expression: null
-    };
-
-
-
-    var players = {};
-
-    window.players = players;
-
-    const worldOctree = new Octree();
-
-    const CAPSULE_HEIGHT_A = 1; // 0.35
-    const CAPSULE_HEIGHT_B = 2; // 0.1
-    const playerCollider = new Capsule(new THREE.Vector3(0, CAPSULE_HEIGHT_A + playerY, 0), new THREE.Vector3(0, CAPSULE_HEIGHT_B + playerY, 0), CAPSULE_HEIGHT_A);
-
-    function updatePlayerCollider() {
-      playerCollider.set(new THREE.Vector3(x, CAPSULE_HEIGHT_A + playerY, y), new THREE.Vector3(x, CAPSULE_HEIGHT_B + playerY, y), CAPSULE_HEIGHT_A)
-    }
-
-    function playerCollisions() {
-      const result = worldOctree.capsuleIntersect(playerCollider);
-
-      playerOnFloor = false;
-
-      if (result) {
-
-        // console.log('collision');
-        // console.log(result);
-
-        playerOnFloor = result.normal.y > 0;
-
-        if (!playerOnFloor) {
-
-          const playerVelocity = new THREE.Vector3(velX, velPlayerY, velY);
-          playerVelocity.addScaledVector(result.normal, - result.normal.dot(playerVelocity));
-
-          velX = playerVelocity.x;
-          velPlayerY = playerVelocity.y;
-          velY = playerVelocity.z;
-        }
-
-        const translateVector = result.normal.multiplyScalar(result.depth);
-        x += translateVector.x;
-        playerY += translateVector.y;
-        y += translateVector.z;
-
-        updatePlayerCollider();
-
-        // playerCollider.translate(result.normal.multiplyScalar(result.depth));
-
-      } else {
-        // console.log('no collision');
-        // console.log(result);
-      }
-
-    }
-
-    function containsObject(obj, list) {
-      var i;
-      for (i = 0; i < list.length; i++) {
-        if (list[i] == obj) {
-          return true;
-        }
-      }
-
-      return false;
-    }
 
     function uuidv4() {
       return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
@@ -203,1671 +116,1832 @@
       );
     }
 
-    // TODO: do this for AI chat and group chat
-    // stop chat input from causing WASD movements
-    $('#chat_input').keydown(function (e) {
-      e.stopPropagation();
+
+
+    $(document).ready(function () {
+      $('#create_room_button').click(function () {
+        const roomLink = generateRoomLink();
+        $('#room_link_a').attr('href', roomLink);
+        $('#room_link_a').text(roomLink);
+
+        $('#room_link_alert').show();
+      });
     });
 
-    const minOrbitDistance = 5;
-    const maxOrbitDistance = 30;
+    function generateRoomLink() {
+      var id = uuidv4().replace(/-/g, '').substring(0, 12);
+      return window.location.origin + '/room/' + id;
+    }
 
-    $('#game_container').on('wheel', function (event) {
-      console.log(event);
 
-      // deltaY obviously records vertical scroll, deltaX and deltaZ exist too.
-      // this condition makes sure it's vertical scrolling that happened
-      if (event.originalEvent.deltaY !== 0) {
 
-        const delta = 0.4;
 
-        if (event.originalEvent.deltaY < 0) {
-          // wheeled up
-          orbitDistance -= delta;
-        }
-        else {
-          // wheeled down
-          orbitDistance += delta;
-        }
 
-        orbitDistance = Math.max(orbitDistance, minOrbitDistance);
-        orbitDistance = Math.min(orbitDistance, maxOrbitDistance);
+    // check if URL is root, like http://127.0.0.1:5173 or http://127.0.0.1:5173/ or http://127.0.0.1:5173/?hello=1
+    const url = new URL(window.location);
+    if (url.pathname == '/') {
+      console.log('This is the root URL');
 
-        computeNewOrbitDeltaVector();
+    } else {
+      $('#home_container').hide();
+
+      // parse room ID from URL like http://127.0.0.1:5173/room/123/
+      const roomId = window.location.pathname.split('/')[2];
+
+      if (!roomId) {
+        alert('Invalid room');
+        throw 'Invalid room';
       }
 
-      event.preventDefault();
-    });
+      console.log(window);
 
-    var isPinchScaling = false;
-    var previousPinchDist = null;
+      let controls;
 
-    function getPinchDistance(e) {
-      var dist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY);
+      var keys = [];
 
-      return dist;
-    }
+      let scene, renderer, camera, stats;
+      let model, skeleton, clock;
 
-    // Detect pinch: https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
-    $(document).on('touchstart', function (event) {
-      console.log('touchstart');
-      console.log('event.touches.length: ' + event.touches.length);
-      if (event.touches.length == 2) {
-        isPinchScaling = true;
-        previousPinchDist = getPinchDistance(event);
-        console.log('previousPinchDist: ' + previousPinchDist);
-      }
-    });
-    $('#game_container').on('touchmove', function (event) {
-      console.log('touchmove');
-      console.log('event.touches.length: ' + event.touches.length);
-      if (isPinchScaling && !isJoystickActive) {
-        // console.log('previousPinchDist: ' + previousPinchDist);
+      const crossFadeControls = [];
 
-        var dist = getPinchDistance(event);
+      let idleAction, walkAction, runAction;
+      let idleWeight, walkWeight, runWeight;
+      let actions, settings;
+      settings = {};
 
-        var deltaDist = previousPinchDist - dist;
+      let singleStepMode = false;
+      let sizeOfNextStep = 0;
 
-        var deltaZoom = deltaDist * 0.075;
+      const PLAYER_Y = 0;
 
-        orbitDistance += deltaZoom;
+      var x = 0;
+      var y = 0;
+      var playerY = 2; // set high enough above platform so player doesn't fall through
+      var velX = 0;
+      var velY = 0;
+      var velPlayerY = 0;
+      var velAngle = null;
+      const speed = 10;
+      const playerRotationSpeed = 5;
 
-        orbitDistance = Math.max(orbitDistance, minOrbitDistance);
-        orbitDistance = Math.min(orbitDistance, maxOrbitDistance);
+      var player = null;
+      var playerUsernameText = null;
 
-        computeNewOrbitDeltaVector();
+      var isOrbitControlsActive = false;
 
-        previousPinchDist = dist;
+      var orbitDeltaVector = new THREE.Vector3(0, 2 * 4, -3 * 4);
+      var orbitDistance = orbitDeltaVector.length();
 
-        // console.log('deltaZoom: ' + deltaZoom);
-        // console.log('orbitDistance: ' + orbitDistance);
-      }
-    });
-    $('#game_container').on('touchend', function (event) {
-      console.log('touchend');
-      console.log('event.touches.length: ' + event.touches.length);
-      isPinchScaling = false;
-    });
+      var lastDirectionVector = null;
 
-    function getPlayerPosition() {
-      return player.position;
-    }
+      var currentAnimationAction = null;
 
-    function getPlayerQuaternion() {
-      return player.quaternion;
-    }
+      var isJoystickActive = false;
 
-    // TODO: compute robot head position
-    function getPlayerHeadPosition() {
-      var pos = player.position.clone();
-      pos.y = 2 * 3 / 4 + playerY;
+      var playerOnFloor = false;
 
-      return pos;
-    }
+      var avatarColor = '0xff990b';
+      var username = 'Guest';
 
-    function getForwardMovementVector() {
-      var vector = new THREE.Vector3(orbitDeltaVector.x, 0, orbitDeltaVector.z);
-      vector.normalize();
 
-      return vector;
-    }
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const intersectObjects = [];
 
-    function getMovementVector(vAngle) {
-      var axis = new THREE.Vector3(0, 1, 0);
-      // var angle = Math.atan(vY * 1.0 / vX);
 
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, vAngle + Math.PI / 2);
-
-      return vector;
-    }
-
-    function getNEMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = Math.PI / 4;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getSEMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = Math.PI / 4 + Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getSWMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = Math.PI / 4 + 2 * Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getNWMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = Math.PI / 4 + 3 * Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getRightMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getBackwardMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = 2 * Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function getLeftMovementVector() {
-      var axis = new THREE.Vector3(0, 1, 0);
-      var angle = 3 * Math.PI / 2;
-
-      var vector = getForwardMovementVector();
-      vector.applyAxisAngle(axis, angle);
-
-      return vector;
-    }
-
-    function computeNewOrbitDeltaVector() {
-      orbitDeltaVector = camera.position.clone().sub(new THREE.Vector3(x, playerY, y));
-
-      orbitDeltaVector.clampLength(orbitDistance, orbitDistance);
-    }
-
-    function onOrbitControlsChange() {
-      computeNewOrbitDeltaVector();
-    }
-
-    function onOrbitControlsStart() {
-      isOrbitControlsActive = true;
-    }
-
-    function onOrbitControlsEnd() {
-      computeNewOrbitDeltaVector();
-
-      // camera.updateMatrixWorld();
-
-      // var vector = new THREE.Vector3(new THREE.Vector3( x, PLAYER_Y, y ));
-
-      // camera.worldToLocal(vector);
-
-      // camera.getWorldPosition(vector);
-      // vector.applyMatrix( camera.matrixWorld );
-
-      // orbitDeltaVector = vector.sub(new THREE.Vector3( x, PLAYER_Y, y ));
-
-      // orbitDeltaVector = camera.position.clone().sub(vector);
-
-      isOrbitControlsActive = false;
-    }
-
-    function resetActivities() {
-      return null;
-    }
-
-    function loadPlatform(callback) {
-      var glbPath = '/models/gltf/props_base.glb';
-      const loader = new GLTFLoader();
-      loader.load(glbPath, function (gltf) {
-        callback(gltf);
-      });
-    }
-
-    function getUsernameText(name) {
-      return [
-        ' ',
-        ' ',
-        ' ',
-        ' ',
-        '\n\n\n\n\n      ' + name + '      \n\n\n\n\n', // pad with lines to get rid of text cut in half glitch
-        ' ',
-        ' ',
-        ' ',
-        ' ',
-      ].join('\n');
-    }
-
-    function createUsernameTextSprite(name) {
-
-      const myText = new SpriteText(name, 1, 'white');
-      myText.fontFace = 'sans-serif';
-      myText.position.set(0, 6, 0);
-
-      return myText;
-    }
-
-    function updateUsernameTextSprite(textSprite, name) {
-      textSprite.text = getUsernameText(name);
-    }
-
-    function loadAvatar(callback) {
-      const loader = new GLTFLoader();
-      loader.load('models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
-
-        console.log('avatar gltf:');
-        console.log(gltf);
-
-        let model = gltf.scene;
-
-        const modelSize = 0.4;
-        model.scale.set(modelSize, modelSize, modelSize);
-
-        setAvatarColorOfModel(model, avatarColor);
-
-        callback(gltf);
-
-      }, undefined, function (e) {
-
-        console.error(e);
-
-      });
-    }
-
-    function setAvatarColorOfModel(model, color) {
-      console.log('setAvatarColor: ' + color);
-
-      // var convertedColor = new THREE.Color(Number(color)).convertSRGBToLinear()
-
-      // traverse model and set color of material
-      model.traverse(function (child) {
-        if (child.isMesh) {
-          // console.log(child)
-          if (child.material.name == 'Main') {
-            // child.material.color.set(convertedColor);
-            child.material.color.setHex(Number(color));
-          }
-        }
-      });
-    }
-
-    window.setAvatarColor = function (color) {
-      avatarColor = color;
-      setAvatarColorOfModel(model, color);
-    }
-
-    window.setUsername = function (name) {
-      console.log('setUsername: ' + name);
-      username = name;
-
-      updateUsernameTextSprite(playerUsernameText, username);
-    }
-
-    init();
-
-    function init() {
-      THREE.ColorManagement.enabled = true;
-
-      // key events
-      document.body.addEventListener("keydown", function (e) {
-        keys[e.keyCode] = true;
-
-        if (e.keyCode == 38 || e.keyCode == 40 || e.keyCode == 32) {
-          e.preventDefault();
-        }
-      });
-      document.body.addEventListener("keyup", function (e) {
-        keys[e.keyCode] = false;
-      });
-
-      const container = document.getElementById('game_container');
-
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
-      // camera.position.set(1, 2, - 3);
-      camera.position.set(orbitDeltaVector.x, orbitDeltaVector.y, orbitDeltaVector.z);
-      camera.lookAt(0, 1, 0);
-
-      clock = new THREE.Clock();
-
-      scene = new THREE.Scene();
-      // scene.background = new THREE.Color(0xa0a0a0);
-      // scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
-      scene.background = new THREE.Color(0xefd1b5);
-      // scene.fog = new THREE.Fog(0xefd1b5, 10, 50);
-      scene.fog = new THREE.Fog(0xefd1b5, 20, 100);
-      // scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
-
-
-
-
-      /*
-      const whiteColor = 0xffffff;
-      const lightColor = 0xfda600;
-      const groundColor = 0xc1440e; // 0x444444
-
-      const hemiLight = new THREE.HemisphereLight(whiteColor, 0x444444);
-      hemiLight.position.set(0, 100, 0);
-      scene.add(hemiLight);
-
-
-      const dirLight = new THREE.DirectionalLight(whiteColor, 0.5);
-      */
-
-      const ambientLight = new THREE.AmbientLight(0x404040);
-      scene.add(ambientLight);
-
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
-      hemiLight.position.set(0, 100, 0);
-      scene.add(hemiLight);
-
-
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      // dirLight.position.set(- 30, 100, - 100);
-      scene.add(dirLight);
-
-      const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-      dirLight.position.set(- 100, 100, - 100);
-      // scene.add(dirLight2);
-
-      /*
-      const helper = new THREE.GridHelper(20, 100);
-      helper.position.y = 0;
-      helper.material.opacity = 1;
-      helper.material.transparent = true;
-      scene.add(helper);
-      */
-
-      // scene.add( new THREE.CameraHelper( dirLight.shadow.camera ) );
-
-      // ground
-
-      /*
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
-      mesh.rotation.x = - Math.PI / 2;
-      // mesh.receiveShadow = true;
-      scene.add(mesh);
-      */
-
-      const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(100, 100, 1, 1),
-        new THREE.MeshStandardMaterial({color: 0xad6242})
-      );
-
-      ground.rotation.x = - Math.PI / 2; // rotates X/Y to X/Z
-      // scene.add(ground);
-
-
-
-      // floor
-
-      const vertex = new THREE.Vector3();
-      const color = new THREE.Color();
-
-      const ratio = 0.25;
-      let floorGeometry = new THREE.PlaneGeometry(ratio * 2000, ratio * 2000, 250, 250);
-      floorGeometry.rotateX(- Math.PI / 2);
-
-      // vertex displacement
-
-      let position = floorGeometry.attributes.position;
-
-      const BOUND_VALUE = 20;
-
-      for (let i = 0, l = position.count; i < l; i++) {
-
-        vertex.fromBufferAttribute(position, i);
-
-        // vertex.x += (Math.random() * 20 - 10) * ratio * 0.5;
-        vertex.y += Math.random() * 0;
-        // vertex.z += (Math.random() * 20 - 10) * ratio * 0.5;
-
-        if (Math.abs(vertex.x) > BOUND_VALUE || Math.abs(vertex.z) > BOUND_VALUE) {
-          vertex.y += 1.5;
-        }
-
-        position.setXYZ(i, vertex.x, vertex.y, vertex.z);
-
-      }
-
-      floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
-
-      position = floorGeometry.attributes.position;
-      const colorsFloor = [];
-
-      for (let i = 0, l = position.count; i < l; i++) {
-        // Mars color palette: https://www.color-hex.com/color-palette/7175
-        // #c1440e -> hsl(18, 86%, 41%)
-        // #ad6242 -> hsl(18, 45%, 47%)
-        // color.setHSL(Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
-
-        //color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, Math.random() * -0.1 + 0.47);
-
-        vertex.fromBufferAttribute(position, i);
-
-        color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, vertex.y * 0.05 + 0.47 + 0.05 * Math.random());
-        color.convertSRGBToLinear();
-        // color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.86, Math.random() * -0.1 + 0.41);
-        colorsFloor.push(color.r, color.g, color.b);
-      }
-
-      floorGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsFloor, 3));
-
-      const floorMaterial = new THREE.MeshStandardMaterial({vertexColors: true});
-      floorMaterial.flatShading = true;
-
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.receiveShadow = true;
-      // scene.add(floor);
-
-      const objectGroup = new THREE.Group();
-
-      objectGroup.add(floor);
-
-      loadPlatform(function (gltf) {
-        var platform = gltf.scene;
-        // alert(platform);
-
-        platform.scale.set(2.5, 2, 2.5);
-
-        platform.position.x += 0;
-        platform.position.y += -0.15;
-        platform.position.z += 0;
-
-        console.log('platform:');
-        console.log(platform);
-
-        objectGroup.add(platform);
-
-        worldOctree.fromGraphNode(objectGroup);
-        const helper = new OctreeHelper(worldOctree);
-
-        helper.visible = false;
-        scene.add(helper);
-
-        // scene.add(platform);
-
-        scene.add(objectGroup);
-      });
-
-
-      loadAvatar(function (gltf) {
-        model = gltf.scene;
-
-        player = model;
-
-        scene.add(model);
-
-        // add floating text above model
-        playerUsernameText = createUsernameTextSprite(username);
-        model.add(playerUsernameText);
-
-        var result = setUpAnimations(model, gltf.animations, true);
-
-        gui = result.gui;
-        api = result.api;
-        actionFunctions = result.actionFunctions;
-        mixer = result.mixer;
-        actions = result.actions;
-        actionStateInfo = result.actionStateInfo;
-
-        window.animationInfo = result;
-
-        if (gui) {
-          gui.hide();
-        }
-
-        // model.position.setY(100)
-
-        animate();
-      });
-
-
-
-
-      var glbPath = '/examples/models/gltf/ImageToStl.com_idle (3).glb';
-      var walkingGlbPath = '/examples/models/gltf/ImageToStl.com_walking (4).glb';
-      var runningGlbPath = '/examples/models/gltf/ImageToStl.com_running (3).glb';
-      var swordSlashGlbPath = '/examples/models/gltf/ImageToStl.com_stable sword outward slash (5).glb';
-
-      // var swordGlbPath = '/examples/models/gltf/Sword Gold.glb';
-      var swordGlbPath = '/examples/models/gltf/red_sword.glb';
-
-      renderer = new THREE.WebGLRenderer({antialias: true});
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.outputEncoding = THREE.sRGBEncoding;
-      renderer.shadowMap.enabled = true;
-
-      // https://blender.stackexchange.com/questions/34728/materials-from-blender-to-three-js-colors-seem-to-be-different
-      renderer.gammaOutput = true;
-      renderer.gammaFactor = 2.2;
-
-      container.appendChild(renderer.domElement);
-
-      // stats = new Stats();
-      // container.appendChild(stats.dom);
-
-      window.addEventListener('resize', onWindowResize);
-
-
-
-
-      controls = new OrbitControls(camera, renderer.domElement);
-      // controls.listenToKeyEvents(window); // optional
-
-      //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-
-      controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-      controls.dampingFactor = 0.05;
-
-      controls.screenSpacePanning = false;
-
-      controls.minDistance = 0;
-      controls.maxDistance = 500;
-
-      controls.maxPolarAngle = Math.PI / 2;
-
-      controls.enablePan = false;
-      controls.enableZoom = false;
-
-      controls.addEventListener('start', onOrbitControlsStart);
-      controls.addEventListener('end', onOrbitControlsEnd);
-      controls.addEventListener('change', onOrbitControlsChange);
-    }
-
-
-    function modifyTimeScale(speed) {
-
-      mixer.timeScale = speed;
-
-    }
-
-
-    function deactivateAllActions() {
-
-      actions.forEach(function (action) {
-
-        action.stop();
-
-      });
-
-    }
-
-    function activateAllActions() {
-      /*
-      setWeight(idleAction, settings['modify idle weight']);
-      setWeight(walkAction, settings['modify walk weight']);
-      setWeight(runAction, settings['modify run weight']);
-
-      actions.forEach(function (action) {
-
-        action.play();
-
-      });
-      */
-    }
-
-    function pauseContinue() {
-
-      if (singleStepMode) {
-
-        singleStepMode = false;
-        unPauseAllActions();
-
-      } else {
-
-        if (idleAction.paused) {
-
-          unPauseAllActions();
-
-        } else {
-
-          pauseAllActions();
-
-        }
-
-      }
-
-    }
-
-    function pauseAllActions() {
-
-      actions.forEach(function (action) {
-
-        action.paused = true;
-
-      });
-
-    }
-
-    function unPauseAllActions() {
-
-      actions.forEach(function (action) {
-
-        action.paused = false;
-
-      });
-
-    }
-
-    function toSingleStepMode() {
-
-      unPauseAllActions();
-
-      singleStepMode = true;
-      sizeOfNextStep = settings['modify step size'];
-
-    }
-
-    function prepareCrossFade(startAction, endAction, defaultDuration) {
-
-      // Switch default / custom crossfade duration (according to the user's choice)
-
-      const duration = setCrossFadeDuration(defaultDuration);
-
-      // Make sure that we don't go on in singleStepMode, and that all actions are unpaused
-
-      singleStepMode = false;
-      unPauseAllActions();
-
-      // If the current action is 'idle' (duration 4 sec), execute the crossfade immediately;
-      // else wait until the current action has finished its current loop
-
-      if (startAction === idleAction) {
-
-        executeCrossFade(startAction, endAction, duration);
-
-      } else {
-
-        synchronizeCrossFade(startAction, endAction, duration);
-
-      }
-
-    }
-
-    function setCrossFadeDuration(defaultDuration) {
-
-      // Switch default crossfade duration <-> custom crossfade duration
-
-      if (settings['use default duration']) {
-
-        return defaultDuration;
-
-      } else {
-
-        return settings['set custom duration'];
-
-      }
-
-    }
-
-    function synchronizeCrossFade(startAction, endAction, duration) {
-
-      mixer.addEventListener('loop', onLoopFinished);
-
-      function onLoopFinished(event) {
-
-        if (event.action === startAction) {
-
-          mixer.removeEventListener('loop', onLoopFinished);
-
-          executeCrossFade(startAction, endAction, duration);
-
-        }
-
-      }
-
-    }
-
-    function executeCrossFade(startAction, endAction, duration) {
-
-      // Not only the start action, but also the end action must get a weight of 1 before fading
-      // (concerning the start action this is already guaranteed in this place)
-
-      setWeight(endAction, 1);
-      endAction.time = 0;
-
-      // Crossfade with warping - you can also try without warping by setting the third parameter to false
-
-      startAction.crossFadeTo(endAction, duration, true);
-
-    }
-
-    // This function is needed, since animationAction.crossFadeTo() disables its start action and sets
-    // the start action's timeScale to ((start animation's duration) / (end animation's duration))
-
-    function setWeight(action, weight) {
-
-      action.enabled = true;
-      action.setEffectiveTimeScale(1);
-      action.setEffectiveWeight(weight);
-
-    }
-
-    // Called by the render loop
-
-    function updateWeightSliders() {
-
-      settings['modify idle weight'] = idleWeight;
-      settings['modify walk weight'] = walkWeight;
-      settings['modify run weight'] = runWeight;
-
-    }
-
-    // Called by the render loop
-
-    function updateCrossFadeControls() {
-      /*
-      if (idleWeight === 1 && walkWeight === 0 && runWeight === 0) {
-
-        crossFadeControls[0].disable();
-        crossFadeControls[1].enable();
-        crossFadeControls[2].disable();
-        crossFadeControls[3].disable();
-
-      }
-
-      if (idleWeight === 0 && walkWeight === 1 && runWeight === 0) {
-
-        crossFadeControls[0].enable();
-        crossFadeControls[1].disable();
-        crossFadeControls[2].enable();
-        crossFadeControls[3].disable();
-
-      }
-
-      if (idleWeight === 0 && walkWeight === 0 && runWeight === 1) {
-
-        crossFadeControls[0].disable();
-        crossFadeControls[1].disable();
-        crossFadeControls[2].disable();
-        crossFadeControls[3].enable();
-
-      }
-      */
-    }
-
-    function onWindowResize() {
-
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-
-      renderer.setSize(window.innerWidth, window.innerHeight);
-
-    }
-
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) {
-        velX = 0;
-        velPlayerY = 0; // try to prevent player from falling through the floor
-        velY = 0;
-      }
-    })
-
-    let secondsPassed;
-    let oldTimeStamp;
-    let fps;
-
-    function animate() {
-      var timeStamp = Date.now();
-
-      if (!oldTimeStamp) {
-        oldTimeStamp = timeStamp;
-        requestAnimationFrame(animate);
-        return;
-      }
-
-      // Calculate the number of seconds passed since the last frame
-      secondsPassed = (timeStamp - oldTimeStamp) / 1000.0;
-      oldTimeStamp = timeStamp;
-
-      // Calculate fps
-      fps = Math.round(1 / secondsPassed);
-
-      if (!player) {
-        requestAnimationFrame(animate);
-        return; // shortcutting here prevents flickering of scene when player is loaded due to camera position and angle change
-      }
-
-      if (player) {
-        player.position.set(x, playerY, y);
-
-        // velPlayerY -= 9.8 * 3.0 * secondsPassed; // 100.0 = mass
-
-        if (true || !isOrbitControlsActive) {
-          // camera.position.set(x + orbitDeltaVector.x, PLAYER_Y + orbitDeltaVector.y, y + orbitDeltaVector.z);
-          // camera.position.set(x, 2, y - 3);
-
-          // https://stackoverflow.com/questions/52607157/move-camera-and-update-its-orbitcontrol-in-three-js
-
-          // controls.target = new THREE.Vector3(x, 2, y - 3);
-          // camera.lookAt(controls.target);
-
-          controls.enabled = false;
-          // camera.position.set(x, 2, y - 3);
-          camera.position.set(x + orbitDeltaVector.x, playerY + orbitDeltaVector.y, y + orbitDeltaVector.z);
-          controls.target = getPlayerHeadPosition();
-          controls.enabled = true;
-
-          // console.log(camera.position);
-
-          // camera.position.set(x + 3, PLAYER_Y + orbitDeltaVector.y, y + orbitDeltaVector.z);
-
-          // camera.lookAt(player.position);
-
-          // var vector = new THREE.Vector3(new THREE.Vector3( x, PLAYER_Y, y ));
-
-          // camera.worldToLocal(vector);
-
-          // camera.getWorldPosition(vector);
-          // vector.applyMatrix( camera.matrixWorld );
-
-          // orbitDeltaVector = vector.sub(new THREE.Vector3( x, PLAYER_Y, y ));
-
-          // vector = vector.add(orbitDeltaVector);
-
-          // camera.position.set(x + 0, PLAYER_Y + 2, y - 3);
-
-          // camera.updateProjectionMatrix();
-
-          controls.update();
-
-          /*
-          var forwardVector = getBackwardMovementVector();
-          forwardVector.add(model.position);
-          model.lookAt(forwardVector);
-          */
-
-          // https://stackoverflow.com/questions/70358483/three-js-rotate-model-towards-xyz-position/70361471#70361471
-
-
-        }
-      }
-
-      var isMovementKeysActive = false;
-
-      var moveUp = false;
-      var moveDown = false;
-      var moveLeft = false;
-      var moveRight = false;
-
-      if (!isJoystickActive) {
-        // check the keys and do the movement.
-        if (keys[38] || keys[87]) {
-          // if (velY > -speed) {
-          // velY = -speed;
-          // }
-          moveUp = true;
-
-          isMovementKeysActive = true;
-        } else if (keys[40] || keys[83]) {
-          // if (velY < speed) {
-          // velY = speed;
-          // }
-          moveDown = true;
-
-          isMovementKeysActive = true;
-        } else {
-          // velY -= velY * 5 * secondsPassed;
-
-          if (Math.abs(velY) < 0.05) {
-            // velY = 0;
-          }
-          // velY = 0;
-        }
-
-        if (keys[39] || keys[68]) {
-          // if (velX < speed) {
-          // velX = speed;
-          // }
-          moveRight = true;
-
-          isMovementKeysActive = true;
-        } else if (keys[37] || keys[65]) {
-          // if (velX > -speed) {
-          // velX = -speed;
-          // }
-
-          moveLeft = true;
-
-          isMovementKeysActive = true;
-        } else {
-          // velX -= velX * 5 * secondsPassed;
-
-          if (Math.abs(velX) < 0.05) {
-            // velX = 0;
-          }
-        }
-      }
-
-      if (isJoystickActive || isMovementKeysActive) {
-        resetActivities();
-      }
-
-      var deltaX = 0;
-      var deltaY = 0;
-      var dir = new THREE.Vector3();
-
-      var scalar = 0;
-
-      const ACCELERATION = 100;
-      const AIR_RESISTANCE = 5;
-
-      if ((moveUp || moveDown) && (moveLeft || moveRight)) {
-        if (moveRight && moveDown) {
-          dir = getNEMovementVector();
-        } else if (moveRight && moveUp) {
-          dir = getSEMovementVector();
-        } else if (moveLeft && moveUp) {
-          dir = getSWMovementVector();
-        } else if (moveLeft && moveDown) {
-          dir = getNWMovementVector();
-        }
-
-        lastDirectionVector = dir;
-
-        // var angle = dir.angleTo(new THREE.Vector3(0, 0, 1));
-
-        // console.log(angle / (2 * Math.PI));
-
-        // if (angle < Math.PI / 2) {
-
-        // deltaX = dir.x * Math.abs(speed) * secondsPassed;
-        // deltaY = dir.z * Math.abs(speed) * secondsPassed;
-
-        // deltaX = dir.x * speed * secondsPassed;
-        // deltaY = dir.z * speed * secondsPassed;
-        velX += dir.x * ACCELERATION * secondsPassed;
-        velY += dir.z * ACCELERATION * secondsPassed;
-
-        // air resistance
-        // TODO: normalize air resistance scalar so that deltaVelocity has fixed vector length
-        velX -= velX * AIR_RESISTANCE * secondsPassed;
-        velY -= velY * AIR_RESISTANCE * secondsPassed;
-
-        // }
-      } else {
-        var signX = 1;
-        var signZ = 1;
-        if (moveUp) {
-          dir = getBackwardMovementVector();
-
-          scalar = velY;
-
-          // model.rotation.y = 0;
-
-          lastDirectionVector = getBackwardMovementVector();
-        } else if (moveDown) {
-          dir = getForwardMovementVector();
-
-          scalar = velY;
-
-          signZ = -1;
-
-          // model.rotation.y = Math.PI;
-
-          lastDirectionVector = getForwardMovementVector();
-        } else if (moveLeft) {
-          dir = getLeftMovementVector();
-
-          scalar = -velX;
-
-          signX = -1;
-          // model.rotation.y = 3 / 2.0 * Math.PI;
-
-          lastDirectionVector = getLeftMovementVector();
-        } else if (moveRight) {
-          dir = getRightMovementVector();
-
-          scalar = -velX;
-
-          // model.rotation.y = 1 / 2.0 * Math.PI;
-          lastDirectionVector = getRightMovementVector();
-        }
-
-        // deltaX = dir.x * speed * secondsPassed;
-        // deltaY = dir.z * speed * secondsPassed;
-        velX += dir.x * ACCELERATION * secondsPassed;
-        velY += dir.z * ACCELERATION * secondsPassed;
-
-        // air resistance
-        // TODO: normalize air resistance scalar so that deltaVelocity has fixed vector length
-        velX -= velX * AIR_RESISTANCE * secondsPassed;
-        velY -= velY * AIR_RESISTANCE * secondsPassed;
-      }
-
-      // console.log(lastDirectionVector);
-      var lookAtVector = lastDirectionVector;
-      const step = playerRotationSpeed * secondsPassed;
-      if (lookAtVector) {
-        lookAtVector = lookAtVector.clone().add(model.position);
-
-        var matrix = new THREE.Matrix4();
-        matrix.lookAt(lookAtVector, model.position, new THREE.Vector3(0, 1, 0));
-
-        var quaternion = new THREE.Quaternion();
-        quaternion.setFromRotationMatrix(matrix);
-
-        model.quaternion.rotateTowards(quaternion, step);
-
-        // model.lookAt(lookAtVector);
-
-        // console.log(lastDirectionVector);
-        // console.log('yo');
-
-      }
-      for (const pId in players) {
-        var p = players[pId];
-
-        if (p.avatar) {
-          p.avatar.quaternion.rotateTowards(new THREE.Quaternion(
-            p.info.quaternion.x,
-            p.info.quaternion.y,
-            p.info.quaternion.z,
-            p.info.quaternion.w
-          ), step);
-        }
-      }
-
-      if (moveUp || moveDown || moveLeft || moveRight) {
-        if (currentAnimationAction != runAction) {
-          runAction.reset();
-          runAction.play();
-
-          currentAnimationAction.crossFadeTo(runAction, 0.5, false);
-          currentAnimationAction = runAction;
-        }
-      } else {
-        if (currentAnimationAction != idleAction) {
-          idleAction.reset();
-          idleAction.play();
-
-          currentAnimationAction.crossFadeTo(idleAction, 0.5, false);
-          currentAnimationAction = idleAction;
-        }
-      }
-
-      // velPlayerY -= 9.8 * 3.0 * secondsPassed; // 100.0 = mass
-
-      // damping reduces jitter, and helps prevents the player from falling through the ground
-      // when window is out of focus
-      let damping = Math.exp(- 4 * secondsPassed) - 1;
-      let dampingY = damping;
-
-      // const GRAVITY = 9.8 * 3.0;
-      const MARS_GRAVITY_A = 3.721;
-      const GRAVITY = 1.0 * MARS_GRAVITY_A * 3.0;
-      if (!playerOnFloor) {
-        velPlayerY -= GRAVITY * secondsPassed;
-
-        // small air resistance
-        dampingY *= 0.1;
-      }
-
-      velX += velX * damping;
-      velPlayerY += velPlayerY * dampingY;
-      velY += velY * damping;
-
-      deltaX = velX * secondsPassed;
-      deltaY = velY * secondsPassed;
-
-      x = x + deltaX;
-      y = y + deltaY;
-
-      playerY += (velPlayerY * secondsPassed);
-
-      // Render loop
-
-      requestAnimationFrame(animate);
-      TWEEN.update();
-
-      // idleWeight = idleAction.getEffectiveWeight();
-      // walkWeight = walkAction.getEffectiveWeight();
-      // runWeight = runAction.getEffectiveWeight();
-
-      // Update the panel values if weights are modified from "outside" (by crossfadings)
-
-      updateWeightSliders();
-
-      // Enable/disable crossfade controls according to current weight values
-
-      updateCrossFadeControls();
-
-      // Get the time elapsed since the last frame, used for mixer update (if not in single step mode)
-
-      let mixerUpdateDelta = clock.getDelta();
-
-      // If in single step mode, make one step and then do nothing (until the user clicks again)
-
-      if (singleStepMode) {
-
-        mixerUpdateDelta = sizeOfNextStep;
-        sizeOfNextStep = 0;
-
-      }
-
-      // Update the animation mixer, the stats panel, and render this frame
-
-      if (mixer) mixer.update(mixerUpdateDelta);
-
-      for (const pId in players) {
-        var p = players[pId];
-
-        if (p.animationInfo) {
-          p.animationInfo.mixer.update(mixerUpdateDelta);
-        }
-      }
-
-      updatePlayerCollider();
-
-      playerCollisions();
-
-      // needs to be called near end of render loop so that all position and velocity
-      // updates are done
-      controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
-
-      // update the picking ray with the camera and pointer position
-      raycaster.setFromCamera(pointer, camera);
-
-      renderer.render(scene, camera);
-    }
-
-
-
-
-    // animation
-    function setUpAnimations(model, animations, isGUI) {
-
-      const states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
-      const emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
-
-      let gui = null;
+      // animation
+      let mixer, actionStateInfo, gui, face;
       let api = {state: 'Idle'};
       let actionFunctions = {
         state: {},
         emote: {},
         expression: null
       };
-      if (isGUI) gui = new GUI();
 
-      /*
-      window.gui = gui;
-      window.api = api;
-      window.actionFunctions = actionFunctions;
-      */
 
-      let mixer = new THREE.AnimationMixer(model);
 
-      let actions = {};
+      var players = {};
 
-      for (let i = 0; i < animations.length; i++) {
+      window.players = players;
 
-        const clip = animations[i];
-        const action = mixer.clipAction(clip);
-        actions[clip.name] = action;
+      const worldOctree = new Octree();
 
-        if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
+      const CAPSULE_HEIGHT_A = 1; // 0.35
+      const CAPSULE_HEIGHT_B = 2; // 0.1
+      const playerCollider = new Capsule(new THREE.Vector3(0, CAPSULE_HEIGHT_A + playerY, 0), new THREE.Vector3(0, CAPSULE_HEIGHT_B + playerY, 0), CAPSULE_HEIGHT_A);
 
-          action.clampWhenFinished = true;
-          action.loop = THREE.LoopOnce;
+      function updatePlayerCollider() {
+        playerCollider.set(new THREE.Vector3(x, CAPSULE_HEIGHT_A + playerY, y), new THREE.Vector3(x, CAPSULE_HEIGHT_B + playerY, y), CAPSULE_HEIGHT_A)
+      }
 
+      function playerCollisions() {
+        const result = worldOctree.capsuleIntersect(playerCollider);
+
+        playerOnFloor = false;
+
+        if (result) {
+
+          // console.log('collision');
+          // console.log(result);
+
+          playerOnFloor = result.normal.y > 0;
+
+          if (!playerOnFloor) {
+
+            const playerVelocity = new THREE.Vector3(velX, velPlayerY, velY);
+            playerVelocity.addScaledVector(result.normal, - result.normal.dot(playerVelocity));
+
+            velX = playerVelocity.x;
+            velPlayerY = playerVelocity.y;
+            velY = playerVelocity.z;
+          }
+
+          const translateVector = result.normal.multiplyScalar(result.depth);
+          x += translateVector.x;
+          playerY += translateVector.y;
+          y += translateVector.z;
+
+          updatePlayerCollider();
+
+          // playerCollider.translate(result.normal.multiplyScalar(result.depth));
+
+        } else {
+          // console.log('no collision');
+          // console.log(result);
         }
 
       }
 
-      // states
+      function containsObject(obj, list) {
+        var i;
+        for (i = 0; i < list.length; i++) {
+          if (list[i] == obj) {
+            return true;
+          }
+        }
 
-      if (isGUI) {
-        const statesFolder = gui.addFolder('States');
+        return false;
+      }
 
-        const clipCtrl = statesFolder.add(api, 'state').options(states);
+      // TODO: do this for AI chat and group chat
+      // stop chat input from causing WASD movements
+      $('#chat_input').keydown(function (e) {
+        e.stopPropagation();
+      });
 
-        clipCtrl.onChange(function () {
+      const minOrbitDistance = 5;
+      const maxOrbitDistance = 30;
 
-          fadeToAction(api.state, 0.5);
+      $('#game_container').on('wheel', function (event) {
+        console.log(event);
 
+        // deltaY obviously records vertical scroll, deltaX and deltaZ exist too.
+        // this condition makes sure it's vertical scrolling that happened
+        if (event.originalEvent.deltaY !== 0) {
+
+          const delta = 0.4;
+
+          if (event.originalEvent.deltaY < 0) {
+            // wheeled up
+            orbitDistance -= delta;
+          }
+          else {
+            // wheeled down
+            orbitDistance += delta;
+          }
+
+          orbitDistance = Math.max(orbitDistance, minOrbitDistance);
+          orbitDistance = Math.min(orbitDistance, maxOrbitDistance);
+
+          computeNewOrbitDeltaVector();
+        }
+
+        event.preventDefault();
+      });
+
+      var isPinchScaling = false;
+      var previousPinchDist = null;
+
+      function getPinchDistance(e) {
+        var dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY);
+
+        return dist;
+      }
+
+      // Detect pinch: https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
+      $(document).on('touchstart', function (event) {
+        console.log('touchstart');
+        console.log('event.touches.length: ' + event.touches.length);
+        if (event.touches.length == 2) {
+          isPinchScaling = true;
+          previousPinchDist = getPinchDistance(event);
+          console.log('previousPinchDist: ' + previousPinchDist);
+        }
+      });
+      $('#game_container').on('touchmove', function (event) {
+        console.log('touchmove');
+        console.log('event.touches.length: ' + event.touches.length);
+        if (isPinchScaling && !isJoystickActive) {
+          // console.log('previousPinchDist: ' + previousPinchDist);
+
+          var dist = getPinchDistance(event);
+
+          var deltaDist = previousPinchDist - dist;
+
+          var deltaZoom = deltaDist * 0.075;
+
+          orbitDistance += deltaZoom;
+
+          orbitDistance = Math.max(orbitDistance, minOrbitDistance);
+          orbitDistance = Math.min(orbitDistance, maxOrbitDistance);
+
+          computeNewOrbitDeltaVector();
+
+          previousPinchDist = dist;
+
+          // console.log('deltaZoom: ' + deltaZoom);
+          // console.log('orbitDistance: ' + orbitDistance);
+        }
+      });
+      $('#game_container').on('touchend', function (event) {
+        console.log('touchend');
+        console.log('event.touches.length: ' + event.touches.length);
+        isPinchScaling = false;
+      });
+
+      function getPlayerPosition() {
+        return player.position;
+      }
+
+      function getPlayerQuaternion() {
+        return player.quaternion;
+      }
+
+      // TODO: compute robot head position
+      function getPlayerHeadPosition() {
+        var pos = player.position.clone();
+        pos.y = 2 * 3 / 4 + playerY;
+
+        return pos;
+      }
+
+      function getForwardMovementVector() {
+        var vector = new THREE.Vector3(orbitDeltaVector.x, 0, orbitDeltaVector.z);
+        vector.normalize();
+
+        return vector;
+      }
+
+      function getMovementVector(vAngle) {
+        var axis = new THREE.Vector3(0, 1, 0);
+        // var angle = Math.atan(vY * 1.0 / vX);
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, vAngle + Math.PI / 2);
+
+        return vector;
+      }
+
+      function getNEMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = Math.PI / 4;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getSEMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = Math.PI / 4 + Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getSWMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = Math.PI / 4 + 2 * Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getNWMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = Math.PI / 4 + 3 * Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getRightMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getBackwardMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = 2 * Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function getLeftMovementVector() {
+        var axis = new THREE.Vector3(0, 1, 0);
+        var angle = 3 * Math.PI / 2;
+
+        var vector = getForwardMovementVector();
+        vector.applyAxisAngle(axis, angle);
+
+        return vector;
+      }
+
+      function computeNewOrbitDeltaVector() {
+        orbitDeltaVector = camera.position.clone().sub(new THREE.Vector3(x, playerY, y));
+
+        orbitDeltaVector.clampLength(orbitDistance, orbitDistance);
+      }
+
+      function onOrbitControlsChange() {
+        computeNewOrbitDeltaVector();
+      }
+
+      function onOrbitControlsStart() {
+        isOrbitControlsActive = true;
+      }
+
+      function onOrbitControlsEnd() {
+        computeNewOrbitDeltaVector();
+
+        // camera.updateMatrixWorld();
+
+        // var vector = new THREE.Vector3(new THREE.Vector3( x, PLAYER_Y, y ));
+
+        // camera.worldToLocal(vector);
+
+        // camera.getWorldPosition(vector);
+        // vector.applyMatrix( camera.matrixWorld );
+
+        // orbitDeltaVector = vector.sub(new THREE.Vector3( x, PLAYER_Y, y ));
+
+        // orbitDeltaVector = camera.position.clone().sub(vector);
+
+        isOrbitControlsActive = false;
+      }
+
+      function resetActivities() {
+        return null;
+      }
+
+      function loadPlatform(callback) {
+        var glbPath = '/models/gltf/props_base.glb';
+        const loader = new GLTFLoader();
+        loader.load(glbPath, function (gltf) {
+          callback(gltf);
         });
-
-        statesFolder.open();
       }
 
-      for (var i = 0; i < states.length; i++) {
-        const state = states[i];
-        actionFunctions.state[state] = function () {
-          fadeToAction(state, 0.5);
-        };
-      };
-
-
-      // emotes
-
-      if (isGUI) {
-
-        const emoteFolder = gui.addFolder('Emotes');
-
-        function createEmoteCallback(name) {
-
-          api[name] = function () {
-
-            fadeToAction(name, 0.2);
-
-            mixer.addEventListener('finished', restoreState);
-
-          };
-
-          emoteFolder.add(api, name);
-
-        }
-
-        for (let i = 0; i < emotes.length; i++) {
-
-          createEmoteCallback(emotes[i]);
-
-        }
-
-        emoteFolder.open();
+      function getUsernameText(name) {
+        return [
+          ' ',
+          ' ',
+          ' ',
+          ' ',
+          '\n\n\n\n\n      ' + name + '      \n\n\n\n\n', // pad with lines to get rid of text cut in half glitch
+          ' ',
+          ' ',
+          ' ',
+          ' ',
+        ].join('\n');
       }
 
-      for (var i = 0; i < emotes.length; i++) {
-        const emote = emotes[i];
-        actionFunctions.emote[emote] = function () {
-          fadeToAction(emote, 0.2);
+      function createUsernameTextSprite(name) {
 
-          mixer.addEventListener('finished', restoreState);
-        };
-      };
+        const myText = new SpriteText(name, 1, 'white');
+        myText.fontFace = 'sans-serif';
+        myText.position.set(0, 6, 0);
 
-      function restoreState() {
-
-        mixer.removeEventListener('finished', restoreState);
-
-        fadeToAction(api.state, 0.2);
-
+        return myText;
       }
 
-      // expressions
-
-      let face = model.getObjectByName('Head_4');
-
-      if (isGUI) {
-        const expressions = Object.keys(face.morphTargetDictionary);
-        const expressionFolder = gui.addFolder('Expressions');
-
-        for (let i = 0; i < expressions.length; i++) {
-
-          expressionFolder.add(face.morphTargetInfluences, i, 0, 1, 0.01).name(expressions[i]);
-
-        }
-        expressionFolder.open();
+      function updateUsernameTextSprite(textSprite, name) {
+        textSprite.text = getUsernameText(name);
       }
 
-      actionFunctions.expression = function (vector) {
-        tweenExpressions(face.morphTargetInfluences, vector, face);
-      }
+      function loadAvatar(callback) {
+        const loader = new GLTFLoader();
+        loader.load('/models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
 
-      let actionStateInfo = {
-        previousAction: null,
-        activeAction: null
-      };
+          console.log('avatar gltf:');
+          console.log(gltf);
 
-      actionStateInfo.activeAction = actions['Idle'];
-      actionStateInfo.activeAction.play();
-
-      function fadeToAction(name, duration) {
-
-        actionStateInfo.previousAction = actionStateInfo.activeAction;
-        actionStateInfo.activeAction = actions[name];
-
-        if (actionStateInfo.previousAction !== actionStateInfo.activeAction) {
-
-          actionStateInfo.previousAction.fadeOut(duration);
-
-        }
-
-        actionStateInfo.activeAction
-          .reset()
-          .setEffectiveTimeScale(1)
-          .setEffectiveWeight(1)
-          .fadeIn(duration)
-          .play();
-
-      }
-
-      return {
-        gui: gui,
-        api: api,
-        actionFunctions: actionFunctions,
-        mixer: mixer,
-        actions: actions,
-        actionStateInfo: actionStateInfo
-      }
-
-    }
-
-    function tweenExpressions(sourceVector, targetVector, face) {
-      const coords = {
-        x: sourceVector[0],
-        y: sourceVector[1],
-        z: sourceVector[2]
-      };
-      new TWEEN.Tween(coords)
-        .to({
-          x: targetVector[0],
-          y: targetVector[1],
-          z: targetVector[2]
-        }, 300)
-        .easing(TWEEN.Easing.Quadratic.Out)
-        .onUpdate(function () {
-          face.morphTargetInfluences[0] = coords.x;
-          face.morphTargetInfluences[1] = coords.y;
-          face.morphTargetInfluences[2] = coords.z;
-        })
-        .start();
-    }
-
-
-
-
-
-    function updatePlayer(info) {
-      var playerId = info.playerId;
-
-      if (!players[playerId]) {
-        // set info here to prevent race condition of loading multiple avatars for same player ID
-        players[playerId] = {
-          info: info,
-          avatar: null,
-          timestamp: Date.now()
-        };
-
-        loadAvatar(function (gltf) {
           let model = gltf.scene;
-          scene.add(model);
 
-          console.log('Loading avatar for player ID: ' + playerId);
+          const modelSize = 0.4;
+          model.scale.set(modelSize, modelSize, modelSize);
 
-          players[playerId].avatar = model;
-
-          let avatarColor = info.avatarColor;
           setAvatarColorOfModel(model, avatarColor);
 
-          let username = info.username;
-          let usernameTextSprite = createUsernameTextSprite(username);
-          model.add(usernameTextSprite);
-          players[playerId].usernameTextSprite = usernameTextSprite;
+          callback(gltf);
 
-          var position = info.position;
-          model.position.set(
-            position.x,
-            position.y,
-            position.z
-          );
+        }, undefined, function (e) {
 
-          var quaternion = info.quaternion;
-          model.quaternion.set(
-            quaternion.x,
-            quaternion.y,
-            quaternion.z,
-            quaternion.w
-          );
+          console.error(e);
 
-          var result = setUpAnimations(model, gltf.animations, false);
-          players[playerId].animationInfo = result;
+        });
+      }
 
-          /*
+      function setAvatarColorOfModel(model, color) {
+        console.log('setAvatarColor: ' + color);
+
+        // var convertedColor = new THREE.Color(Number(color)).convertSRGBToLinear()
+
+        // traverse model and set color of material
+        model.traverse(function (child) {
+          if (child.isMesh) {
+            // console.log(child)
+            if (child.material.name == 'Main') {
+              // child.material.color.set(convertedColor);
+              child.material.color.setHex(Number(color));
+            }
+          }
+        });
+      }
+
+      window.setAvatarColor = function (color) {
+        avatarColor = color;
+        setAvatarColorOfModel(model, color);
+      }
+
+      window.setUsername = function (name) {
+        console.log('setUsername: ' + name);
+        username = name;
+
+        updateUsernameTextSprite(playerUsernameText, username);
+      }
+
+      init();
+
+      function init() {
+        THREE.ColorManagement.enabled = true;
+
+        // key events
+        document.body.addEventListener("keydown", function (e) {
+          keys[e.keyCode] = true;
+
+          if (e.keyCode == 38 || e.keyCode == 40 || e.keyCode == 32) {
+            e.preventDefault();
+          }
+        });
+        document.body.addEventListener("keyup", function (e) {
+          keys[e.keyCode] = false;
+        });
+
+        const container = document.getElementById('game_container');
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+        // camera.position.set(1, 2, - 3);
+        camera.position.set(orbitDeltaVector.x, orbitDeltaVector.y, orbitDeltaVector.z);
+        camera.lookAt(0, 1, 0);
+
+        clock = new THREE.Clock();
+
+        scene = new THREE.Scene();
+        // scene.background = new THREE.Color(0xa0a0a0);
+        // scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
+        scene.background = new THREE.Color(0xefd1b5);
+        // scene.fog = new THREE.Fog(0xefd1b5, 10, 50);
+        scene.fog = new THREE.Fog(0xefd1b5, 20, 100);
+        // scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
+
+
+
+
+        /*
+        const whiteColor = 0xffffff;
+        const lightColor = 0xfda600;
+        const groundColor = 0xc1440e; // 0x444444
+  
+        const hemiLight = new THREE.HemisphereLight(whiteColor, 0x444444);
+        hemiLight.position.set(0, 100, 0);
+        scene.add(hemiLight);
+  
+  
+        const dirLight = new THREE.DirectionalLight(whiteColor, 0.5);
+        */
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
+        hemiLight.position.set(0, 100, 0);
+        scene.add(hemiLight);
+
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        // dirLight.position.set(- 30, 100, - 100);
+        scene.add(dirLight);
+
+        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(- 100, 100, - 100);
+        // scene.add(dirLight2);
+
+        /*
+        const helper = new THREE.GridHelper(20, 100);
+        helper.position.y = 0;
+        helper.material.opacity = 1;
+        helper.material.transparent = true;
+        scene.add(helper);
+        */
+
+        // scene.add( new THREE.CameraHelper( dirLight.shadow.camera ) );
+
+        // ground
+
+        /*
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
+        mesh.rotation.x = - Math.PI / 2;
+        // mesh.receiveShadow = true;
+        scene.add(mesh);
+        */
+
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(100, 100, 1, 1),
+          new THREE.MeshStandardMaterial({color: 0xad6242})
+        );
+
+        ground.rotation.x = - Math.PI / 2; // rotates X/Y to X/Z
+        // scene.add(ground);
+
+
+
+        // floor
+
+        const vertex = new THREE.Vector3();
+        const color = new THREE.Color();
+
+        const ratio = 0.25;
+        let floorGeometry = new THREE.PlaneGeometry(ratio * 2000, ratio * 2000, 250, 250);
+        floorGeometry.rotateX(- Math.PI / 2);
+
+        // vertex displacement
+
+        let position = floorGeometry.attributes.position;
+
+        const BOUND_VALUE = 20;
+
+        for (let i = 0, l = position.count; i < l; i++) {
+
+          vertex.fromBufferAttribute(position, i);
+
+          // vertex.x += (Math.random() * 20 - 10) * ratio * 0.5;
+          vertex.y += Math.random() * 0;
+          // vertex.z += (Math.random() * 20 - 10) * ratio * 0.5;
+
+          if (Math.abs(vertex.x) > BOUND_VALUE || Math.abs(vertex.z) > BOUND_VALUE) {
+            vertex.y += 1.5;
+          }
+
+          position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+
+        }
+
+        floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
+
+        position = floorGeometry.attributes.position;
+        const colorsFloor = [];
+
+        for (let i = 0, l = position.count; i < l; i++) {
+          // Mars color palette: https://www.color-hex.com/color-palette/7175
+          // #c1440e -> hsl(18, 86%, 41%)
+          // #ad6242 -> hsl(18, 45%, 47%)
+          // color.setHSL(Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
+
+          //color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, Math.random() * -0.1 + 0.47);
+
+          vertex.fromBufferAttribute(position, i);
+
+          color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.45, vertex.y * 0.05 + 0.47 + 0.05 * Math.random());
+          color.convertSRGBToLinear();
+          // color.setHSL(Math.random() * 0.00 + 18.0 / 360, 0.86, Math.random() * -0.1 + 0.41);
+          colorsFloor.push(color.r, color.g, color.b);
+        }
+
+        floorGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsFloor, 3));
+
+        const floorMaterial = new THREE.MeshStandardMaterial({vertexColors: true});
+        floorMaterial.flatShading = true;
+
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.receiveShadow = true;
+        // scene.add(floor);
+
+        const objectGroup = new THREE.Group();
+
+        objectGroup.add(floor);
+
+        loadPlatform(function (gltf) {
+          var platform = gltf.scene;
+          // alert(platform);
+
+          platform.scale.set(2.5, 2, 2.5);
+
+          platform.position.x += 0;
+          platform.position.y += -0.15;
+          platform.position.z += 0;
+
+          console.log('platform:');
+          console.log(platform);
+
+          objectGroup.add(platform);
+
+          worldOctree.fromGraphNode(objectGroup);
+          const helper = new OctreeHelper(worldOctree);
+
+          helper.visible = false;
+          scene.add(helper);
+
+          // scene.add(platform);
+
+          scene.add(objectGroup);
+        });
+
+
+        loadAvatar(function (gltf) {
+          model = gltf.scene;
+
+          player = model;
+
+          scene.add(model);
+
+          // add floating text above model
+          playerUsernameText = createUsernameTextSprite(username);
+          model.add(playerUsernameText);
+
+          var result = setUpAnimations(model, gltf.animations, true);
+
+          gui = result.gui;
           api = result.api;
           actionFunctions = result.actionFunctions;
           mixer = result.mixer;
           actions = result.actions;
           actionStateInfo = result.actionStateInfo;
-          */
+
+          window.animationInfo = result;
+
+          if (gui) {
+            gui.hide();
+          }
+
+          // model.position.setY(100)
+
+          animate();
         });
-      } else {
-        var avatar = players[playerId].avatar;
 
-        if (avatar) {
 
-          var position = info.position;
-          var quaternion = info.quaternion;
-          var deltaTime = Date.now() - players[playerId].timestamp;
-          players[playerId].timestamp = Date.now();
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.shadowMap.enabled = true;
 
-          const coords = {
-            x: avatar.position.x,
-            y: avatar.position.y,
-            z: avatar.position.z
+        // https://blender.stackexchange.com/questions/34728/materials-from-blender-to-three-js-colors-seem-to-be-different
+        renderer.gammaOutput = true;
+        renderer.gammaFactor = 2.2;
+
+        container.appendChild(renderer.domElement);
+
+        // stats = new Stats();
+        // container.appendChild(stats.dom);
+
+        window.addEventListener('resize', onWindowResize);
+
+
+
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        // controls.listenToKeyEvents(window); // optional
+
+        //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
+
+        controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+        controls.dampingFactor = 0.05;
+
+        controls.screenSpacePanning = false;
+
+        controls.minDistance = 0;
+        controls.maxDistance = 500;
+
+        controls.maxPolarAngle = Math.PI / 2;
+
+        controls.enablePan = false;
+        controls.enableZoom = false;
+
+        controls.addEventListener('start', onOrbitControlsStart);
+        controls.addEventListener('end', onOrbitControlsEnd);
+        controls.addEventListener('change', onOrbitControlsChange);
+      }
+
+
+      function modifyTimeScale(speed) {
+
+        mixer.timeScale = speed;
+
+      }
+
+
+      function deactivateAllActions() {
+
+        actions.forEach(function (action) {
+
+          action.stop();
+
+        });
+
+      }
+
+      function activateAllActions() {
+        /*
+        setWeight(idleAction, settings['modify idle weight']);
+        setWeight(walkAction, settings['modify walk weight']);
+        setWeight(runAction, settings['modify run weight']);
+  
+        actions.forEach(function (action) {
+  
+          action.play();
+  
+        });
+        */
+      }
+
+      function pauseContinue() {
+
+        if (singleStepMode) {
+
+          singleStepMode = false;
+          unPauseAllActions();
+
+        } else {
+
+          if (idleAction.paused) {
+
+            unPauseAllActions();
+
+          } else {
+
+            pauseAllActions();
+
+          }
+
+        }
+
+      }
+
+      function pauseAllActions() {
+
+        actions.forEach(function (action) {
+
+          action.paused = true;
+
+        });
+
+      }
+
+      function unPauseAllActions() {
+
+        actions.forEach(function (action) {
+
+          action.paused = false;
+
+        });
+
+      }
+
+      function toSingleStepMode() {
+
+        unPauseAllActions();
+
+        singleStepMode = true;
+        sizeOfNextStep = settings['modify step size'];
+
+      }
+
+      function prepareCrossFade(startAction, endAction, defaultDuration) {
+
+        // Switch default / custom crossfade duration (according to the user's choice)
+
+        const duration = setCrossFadeDuration(defaultDuration);
+
+        // Make sure that we don't go on in singleStepMode, and that all actions are unpaused
+
+        singleStepMode = false;
+        unPauseAllActions();
+
+        // If the current action is 'idle' (duration 4 sec), execute the crossfade immediately;
+        // else wait until the current action has finished its current loop
+
+        if (startAction === idleAction) {
+
+          executeCrossFade(startAction, endAction, duration);
+
+        } else {
+
+          synchronizeCrossFade(startAction, endAction, duration);
+
+        }
+
+      }
+
+      function setCrossFadeDuration(defaultDuration) {
+
+        // Switch default crossfade duration <-> custom crossfade duration
+
+        if (settings['use default duration']) {
+
+          return defaultDuration;
+
+        } else {
+
+          return settings['set custom duration'];
+
+        }
+
+      }
+
+      function synchronizeCrossFade(startAction, endAction, duration) {
+
+        mixer.addEventListener('loop', onLoopFinished);
+
+        function onLoopFinished(event) {
+
+          if (event.action === startAction) {
+
+            mixer.removeEventListener('loop', onLoopFinished);
+
+            executeCrossFade(startAction, endAction, duration);
+
+          }
+
+        }
+
+      }
+
+      function executeCrossFade(startAction, endAction, duration) {
+
+        // Not only the start action, but also the end action must get a weight of 1 before fading
+        // (concerning the start action this is already guaranteed in this place)
+
+        setWeight(endAction, 1);
+        endAction.time = 0;
+
+        // Crossfade with warping - you can also try without warping by setting the third parameter to false
+
+        startAction.crossFadeTo(endAction, duration, true);
+
+      }
+
+      // This function is needed, since animationAction.crossFadeTo() disables its start action and sets
+      // the start action's timeScale to ((start animation's duration) / (end animation's duration))
+
+      function setWeight(action, weight) {
+
+        action.enabled = true;
+        action.setEffectiveTimeScale(1);
+        action.setEffectiveWeight(weight);
+
+      }
+
+      // Called by the render loop
+
+      function updateWeightSliders() {
+
+        settings['modify idle weight'] = idleWeight;
+        settings['modify walk weight'] = walkWeight;
+        settings['modify run weight'] = runWeight;
+
+      }
+
+      // Called by the render loop
+
+      function updateCrossFadeControls() {
+        /*
+        if (idleWeight === 1 && walkWeight === 0 && runWeight === 0) {
+  
+          crossFadeControls[0].disable();
+          crossFadeControls[1].enable();
+          crossFadeControls[2].disable();
+          crossFadeControls[3].disable();
+  
+        }
+  
+        if (idleWeight === 0 && walkWeight === 1 && runWeight === 0) {
+  
+          crossFadeControls[0].enable();
+          crossFadeControls[1].disable();
+          crossFadeControls[2].enable();
+          crossFadeControls[3].disable();
+  
+        }
+  
+        if (idleWeight === 0 && walkWeight === 0 && runWeight === 1) {
+  
+          crossFadeControls[0].disable();
+          crossFadeControls[1].disable();
+          crossFadeControls[2].disable();
+          crossFadeControls[3].enable();
+  
+        }
+        */
+      }
+
+      function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+      }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          velX = 0;
+          velPlayerY = 0; // try to prevent player from falling through the floor
+          velY = 0;
+        }
+      })
+
+      let secondsPassed;
+      let oldTimeStamp;
+      let fps;
+
+      function animate() {
+        var timeStamp = Date.now();
+
+        if (!oldTimeStamp) {
+          oldTimeStamp = timeStamp;
+          requestAnimationFrame(animate);
+          return;
+        }
+
+        // Calculate the number of seconds passed since the last frame
+        secondsPassed = (timeStamp - oldTimeStamp) / 1000.0;
+        oldTimeStamp = timeStamp;
+
+        // Calculate fps
+        fps = Math.round(1 / secondsPassed);
+
+        if (!player) {
+          requestAnimationFrame(animate);
+          return; // shortcutting here prevents flickering of scene when player is loaded due to camera position and angle change
+        }
+
+        if (player) {
+          player.position.set(x, playerY, y);
+
+          // velPlayerY -= 9.8 * 3.0 * secondsPassed; // 100.0 = mass
+
+          if (true || !isOrbitControlsActive) {
+            // camera.position.set(x + orbitDeltaVector.x, PLAYER_Y + orbitDeltaVector.y, y + orbitDeltaVector.z);
+            // camera.position.set(x, 2, y - 3);
+
+            // https://stackoverflow.com/questions/52607157/move-camera-and-update-its-orbitcontrol-in-three-js
+
+            // controls.target = new THREE.Vector3(x, 2, y - 3);
+            // camera.lookAt(controls.target);
+
+            controls.enabled = false;
+            // camera.position.set(x, 2, y - 3);
+            camera.position.set(x + orbitDeltaVector.x, playerY + orbitDeltaVector.y, y + orbitDeltaVector.z);
+            controls.target = getPlayerHeadPosition();
+            controls.enabled = true;
+
+            // console.log(camera.position);
+
+            // camera.position.set(x + 3, PLAYER_Y + orbitDeltaVector.y, y + orbitDeltaVector.z);
+
+            // camera.lookAt(player.position);
+
+            // var vector = new THREE.Vector3(new THREE.Vector3( x, PLAYER_Y, y ));
+
+            // camera.worldToLocal(vector);
+
+            // camera.getWorldPosition(vector);
+            // vector.applyMatrix( camera.matrixWorld );
+
+            // orbitDeltaVector = vector.sub(new THREE.Vector3( x, PLAYER_Y, y ));
+
+            // vector = vector.add(orbitDeltaVector);
+
+            // camera.position.set(x + 0, PLAYER_Y + 2, y - 3);
+
+            // camera.updateProjectionMatrix();
+
+            controls.update();
+
+            /*
+            var forwardVector = getBackwardMovementVector();
+            forwardVector.add(model.position);
+            model.lookAt(forwardVector);
+            */
+
+            // https://stackoverflow.com/questions/70358483/three-js-rotate-model-towards-xyz-position/70361471#70361471
+
+
+          }
+        }
+
+        var isMovementKeysActive = false;
+
+        var moveUp = false;
+        var moveDown = false;
+        var moveLeft = false;
+        var moveRight = false;
+
+        if (!isJoystickActive) {
+          // check the keys and do the movement.
+          if (keys[38] || keys[87]) {
+            // if (velY > -speed) {
+            // velY = -speed;
+            // }
+            moveUp = true;
+
+            isMovementKeysActive = true;
+          } else if (keys[40] || keys[83]) {
+            // if (velY < speed) {
+            // velY = speed;
+            // }
+            moveDown = true;
+
+            isMovementKeysActive = true;
+          } else {
+            // velY -= velY * 5 * secondsPassed;
+
+            if (Math.abs(velY) < 0.05) {
+              // velY = 0;
+            }
+            // velY = 0;
+          }
+
+          if (keys[39] || keys[68]) {
+            // if (velX < speed) {
+            // velX = speed;
+            // }
+            moveRight = true;
+
+            isMovementKeysActive = true;
+          } else if (keys[37] || keys[65]) {
+            // if (velX > -speed) {
+            // velX = -speed;
+            // }
+
+            moveLeft = true;
+
+            isMovementKeysActive = true;
+          } else {
+            // velX -= velX * 5 * secondsPassed;
+
+            if (Math.abs(velX) < 0.05) {
+              // velX = 0;
+            }
+          }
+        }
+
+        if (isJoystickActive || isMovementKeysActive) {
+          resetActivities();
+        }
+
+        var deltaX = 0;
+        var deltaY = 0;
+        var dir = new THREE.Vector3();
+
+        var scalar = 0;
+
+        const ACCELERATION = 100;
+        const AIR_RESISTANCE = 5;
+
+        if ((moveUp || moveDown) && (moveLeft || moveRight)) {
+          if (moveRight && moveDown) {
+            dir = getNEMovementVector();
+          } else if (moveRight && moveUp) {
+            dir = getSEMovementVector();
+          } else if (moveLeft && moveUp) {
+            dir = getSWMovementVector();
+          } else if (moveLeft && moveDown) {
+            dir = getNWMovementVector();
+          }
+
+          lastDirectionVector = dir;
+
+          // var angle = dir.angleTo(new THREE.Vector3(0, 0, 1));
+
+          // console.log(angle / (2 * Math.PI));
+
+          // if (angle < Math.PI / 2) {
+
+          // deltaX = dir.x * Math.abs(speed) * secondsPassed;
+          // deltaY = dir.z * Math.abs(speed) * secondsPassed;
+
+          // deltaX = dir.x * speed * secondsPassed;
+          // deltaY = dir.z * speed * secondsPassed;
+          velX += dir.x * ACCELERATION * secondsPassed;
+          velY += dir.z * ACCELERATION * secondsPassed;
+
+          // air resistance
+          // TODO: normalize air resistance scalar so that deltaVelocity has fixed vector length
+          velX -= velX * AIR_RESISTANCE * secondsPassed;
+          velY -= velY * AIR_RESISTANCE * secondsPassed;
+
+          // }
+        } else {
+          var signX = 1;
+          var signZ = 1;
+          if (moveUp) {
+            dir = getBackwardMovementVector();
+
+            scalar = velY;
+
+            // model.rotation.y = 0;
+
+            lastDirectionVector = getBackwardMovementVector();
+          } else if (moveDown) {
+            dir = getForwardMovementVector();
+
+            scalar = velY;
+
+            signZ = -1;
+
+            // model.rotation.y = Math.PI;
+
+            lastDirectionVector = getForwardMovementVector();
+          } else if (moveLeft) {
+            dir = getLeftMovementVector();
+
+            scalar = -velX;
+
+            signX = -1;
+            // model.rotation.y = 3 / 2.0 * Math.PI;
+
+            lastDirectionVector = getLeftMovementVector();
+          } else if (moveRight) {
+            dir = getRightMovementVector();
+
+            scalar = -velX;
+
+            // model.rotation.y = 1 / 2.0 * Math.PI;
+            lastDirectionVector = getRightMovementVector();
+          }
+
+          // deltaX = dir.x * speed * secondsPassed;
+          // deltaY = dir.z * speed * secondsPassed;
+          velX += dir.x * ACCELERATION * secondsPassed;
+          velY += dir.z * ACCELERATION * secondsPassed;
+
+          // air resistance
+          // TODO: normalize air resistance scalar so that deltaVelocity has fixed vector length
+          velX -= velX * AIR_RESISTANCE * secondsPassed;
+          velY -= velY * AIR_RESISTANCE * secondsPassed;
+        }
+
+        // console.log(lastDirectionVector);
+        var lookAtVector = lastDirectionVector;
+        const step = playerRotationSpeed * secondsPassed;
+        if (lookAtVector) {
+          lookAtVector = lookAtVector.clone().add(model.position);
+
+          var matrix = new THREE.Matrix4();
+          matrix.lookAt(lookAtVector, model.position, new THREE.Vector3(0, 1, 0));
+
+          var quaternion = new THREE.Quaternion();
+          quaternion.setFromRotationMatrix(matrix);
+
+          model.quaternion.rotateTowards(quaternion, step);
+
+          // model.lookAt(lookAtVector);
+
+          // console.log(lastDirectionVector);
+          // console.log('yo');
+
+        }
+        for (const pId in players) {
+          var p = players[pId];
+
+          if (p.avatar) {
+            p.avatar.quaternion.rotateTowards(new THREE.Quaternion(
+              p.info.quaternion.x,
+              p.info.quaternion.y,
+              p.info.quaternion.z,
+              p.info.quaternion.w
+            ), step);
+          }
+        }
+
+        if (moveUp || moveDown || moveLeft || moveRight) {
+          if (currentAnimationAction != runAction) {
+            runAction.reset();
+            runAction.play();
+
+            currentAnimationAction.crossFadeTo(runAction, 0.5, false);
+            currentAnimationAction = runAction;
+          }
+        } else {
+          if (currentAnimationAction != idleAction) {
+            idleAction.reset();
+            idleAction.play();
+
+            currentAnimationAction.crossFadeTo(idleAction, 0.5, false);
+            currentAnimationAction = idleAction;
+          }
+        }
+
+        // velPlayerY -= 9.8 * 3.0 * secondsPassed; // 100.0 = mass
+
+        // damping reduces jitter, and helps prevents the player from falling through the ground
+        // when window is out of focus
+        let damping = Math.exp(- 4 * secondsPassed) - 1;
+        let dampingY = damping;
+
+        // const GRAVITY = 9.8 * 3.0;
+        const MARS_GRAVITY_A = 3.721;
+        const GRAVITY = 1.0 * MARS_GRAVITY_A * 3.0;
+        if (!playerOnFloor) {
+          velPlayerY -= GRAVITY * secondsPassed;
+
+          // small air resistance
+          dampingY *= 0.1;
+        }
+
+        velX += velX * damping;
+        velPlayerY += velPlayerY * dampingY;
+        velY += velY * damping;
+
+        deltaX = velX * secondsPassed;
+        deltaY = velY * secondsPassed;
+
+        x = x + deltaX;
+        y = y + deltaY;
+
+        playerY += (velPlayerY * secondsPassed);
+
+        // Render loop
+
+        requestAnimationFrame(animate);
+        TWEEN.update();
+
+        // idleWeight = idleAction.getEffectiveWeight();
+        // walkWeight = walkAction.getEffectiveWeight();
+        // runWeight = runAction.getEffectiveWeight();
+
+        // Update the panel values if weights are modified from "outside" (by crossfadings)
+
+        updateWeightSliders();
+
+        // Enable/disable crossfade controls according to current weight values
+
+        updateCrossFadeControls();
+
+        // Get the time elapsed since the last frame, used for mixer update (if not in single step mode)
+
+        let mixerUpdateDelta = clock.getDelta();
+
+        // If in single step mode, make one step and then do nothing (until the user clicks again)
+
+        if (singleStepMode) {
+
+          mixerUpdateDelta = sizeOfNextStep;
+          sizeOfNextStep = 0;
+
+        }
+
+        // Update the animation mixer, the stats panel, and render this frame
+
+        if (mixer) mixer.update(mixerUpdateDelta);
+
+        for (const pId in players) {
+          var p = players[pId];
+
+          if (p.animationInfo) {
+            p.animationInfo.mixer.update(mixerUpdateDelta);
+          }
+        }
+
+        updatePlayerCollider();
+
+        playerCollisions();
+
+        // needs to be called near end of render loop so that all position and velocity
+        // updates are done
+        controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+
+        // update the picking ray with the camera and pointer position
+        raycaster.setFromCamera(pointer, camera);
+
+        renderer.render(scene, camera);
+      }
+
+
+
+
+      // animation
+      function setUpAnimations(model, animations, isGUI) {
+
+        const states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
+        const emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
+
+        let gui = null;
+        let api = {state: 'Idle'};
+        let actionFunctions = {
+          state: {},
+          emote: {},
+          expression: null
+        };
+        if (isGUI) gui = new GUI();
+
+        /*
+        window.gui = gui;
+        window.api = api;
+        window.actionFunctions = actionFunctions;
+        */
+
+        let mixer = new THREE.AnimationMixer(model);
+
+        let actions = {};
+
+        for (let i = 0; i < animations.length; i++) {
+
+          const clip = animations[i];
+          const action = mixer.clipAction(clip);
+          actions[clip.name] = action;
+
+          if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
+
+            action.clampWhenFinished = true;
+            action.loop = THREE.LoopOnce;
+
+          }
+
+        }
+
+        // states
+
+        if (isGUI) {
+          const statesFolder = gui.addFolder('States');
+
+          const clipCtrl = statesFolder.add(api, 'state').options(states);
+
+          clipCtrl.onChange(function () {
+
+            fadeToAction(api.state, 0.5);
+
+          });
+
+          statesFolder.open();
+        }
+
+        for (var i = 0; i < states.length; i++) {
+          const state = states[i];
+          actionFunctions.state[state] = function () {
+            fadeToAction(state, 0.5);
           };
-          const tween = new TWEEN.Tween(avatar.position) // Create a new tween that modifies 'coords'.
-            .to({
-              x: position.x,
-              y: position.y,
-              z: position.z,
-            }, deltaTime) // Move to (300, 200) in 1 second.
-            .easing(TWEEN.Easing.Linear.None) // Use an easing function to make the animation smooth.
-            .onUpdate(() => {
-              // Called after tween.js updates 'coords'.
-              // Move 'box' to the position described by 'coords' with a CSS translation.
-              // box.style.setProperty('transform', `translate(${coords.x}px, ${coords.y}px)`)
+        };
 
-              /*
-              avatar.position.set(
-                coords.x,
-                coords.y,
-                coords.z
-              );
-              */
-            })
-            .start() // Start the tween immediately.
+
+        // emotes
+
+        if (isGUI) {
+
+          const emoteFolder = gui.addFolder('Emotes');
+
+          function createEmoteCallback(name) {
+
+            api[name] = function () {
+
+              fadeToAction(name, 0.2);
+
+              mixer.addEventListener('finished', restoreState);
+
+            };
+
+            emoteFolder.add(api, name);
+
+          }
+
+          for (let i = 0; i < emotes.length; i++) {
+
+            createEmoteCallback(emotes[i]);
+
+          }
+
+          emoteFolder.open();
         }
 
-        players[playerId].info = info;
+        for (var i = 0; i < emotes.length; i++) {
+          const emote = emotes[i];
+          actionFunctions.emote[emote] = function () {
+            fadeToAction(emote, 0.2);
+
+            mixer.addEventListener('finished', restoreState);
+          };
+        };
+
+        function restoreState() {
+
+          mixer.removeEventListener('finished', restoreState);
+
+          fadeToAction(api.state, 0.2);
+
+        }
+
+        // expressions
+
+        let face = model.getObjectByName('Head_4');
+
+        if (isGUI) {
+          const expressions = Object.keys(face.morphTargetDictionary);
+          const expressionFolder = gui.addFolder('Expressions');
+
+          for (let i = 0; i < expressions.length; i++) {
+
+            expressionFolder.add(face.morphTargetInfluences, i, 0, 1, 0.01).name(expressions[i]);
+
+          }
+          expressionFolder.open();
+        }
+
+        actionFunctions.expression = function (vector) {
+          tweenExpressions(face.morphTargetInfluences, vector, face);
+        }
+
+        let actionStateInfo = {
+          previousAction: null,
+          activeAction: null
+        };
+
+        actionStateInfo.activeAction = actions['Idle'];
+        actionStateInfo.activeAction.play();
+
+        function fadeToAction(name, duration) {
+
+          actionStateInfo.previousAction = actionStateInfo.activeAction;
+          actionStateInfo.activeAction = actions[name];
+
+          if (actionStateInfo.previousAction !== actionStateInfo.activeAction) {
+
+            actionStateInfo.previousAction.fadeOut(duration);
+
+          }
+
+          actionStateInfo.activeAction
+            .reset()
+            .setEffectiveTimeScale(1)
+            .setEffectiveWeight(1)
+            .fadeIn(duration)
+            .play();
+
+        }
+
+        return {
+          gui: gui,
+          api: api,
+          actionFunctions: actionFunctions,
+          mixer: mixer,
+          actions: actions,
+          actionStateInfo: actionStateInfo
+        }
+
       }
-    }
 
-    function removePlayer(info) {
-      let playerId = info.playerId;
-
-      console.log('Players:');
-      console.log(players);
-      console.log('Removing player with ID: ' + playerId);
-
-      if (players[playerId].avatar) {
-        players[playerId].avatar.removeFromParent();
+      function tweenExpressions(sourceVector, targetVector, face) {
+        const coords = {
+          x: sourceVector[0],
+          y: sourceVector[1],
+          z: sourceVector[2]
+        };
+        new TWEEN.Tween(coords)
+          .to({
+            x: targetVector[0],
+            y: targetVector[1],
+            z: targetVector[2]
+          }, 300)
+          .easing(TWEEN.Easing.Quadratic.Out)
+          .onUpdate(function () {
+            face.morphTargetInfluences[0] = coords.x;
+            face.morphTargetInfluences[1] = coords.y;
+            face.morphTargetInfluences[2] = coords.z;
+          })
+          .start();
       }
 
-      delete players[playerId];
-    }
 
 
 
-    // networking
 
-    let socketEndpoint = 'http://localhost:3002';
-    if (process.env.NODE_ENV == 'production') {
-      socketEndpoint = 'http://roboparty-181954572.us-east-2.elb.amazonaws.com:3003'; // TODO: add ec2 instance endpoint
-    }
-    const socket = io(socketEndpoint);
+      function updatePlayer(info) {
+        var playerId = info.playerId;
 
-    var playerId = uuidv4();
+        if (!players[playerId]) {
+          // set info here to prevent race condition of loading multiple avatars for same player ID
+          players[playerId] = {
+            info: info,
+            avatar: null,
+            timestamp: Date.now()
+          };
 
-    socket.on('chat_message', function (msg) {
-      console.log('received chat message')
-      console.log(msg);
+          loadAvatar(function (gltf) {
+            let model = gltf.scene;
+            scene.add(model);
 
-      msg.isUserSender = playerId == msg.playerId;
+            console.log('Loading avatar for player ID: ' + playerId);
 
-      window.receiveChatMessage(msg);
-    });
+            players[playerId].avatar = model;
 
-    window.sendChatMessage = function (message) {
-      console.log('sendChatMessage: ' + message);
-      socket.emit('chat_message', {
-        playerId: playerId,
-        username: username,
-        message: message
+            let avatarColor = info.avatarColor;
+            setAvatarColorOfModel(model, avatarColor);
+
+            let username = info.username;
+            let usernameTextSprite = createUsernameTextSprite(username);
+            model.add(usernameTextSprite);
+            players[playerId].usernameTextSprite = usernameTextSprite;
+
+            var position = info.position;
+            model.position.set(
+              position.x,
+              position.y,
+              position.z
+            );
+
+            var quaternion = info.quaternion;
+            model.quaternion.set(
+              quaternion.x,
+              quaternion.y,
+              quaternion.z,
+              quaternion.w
+            );
+
+            var result = setUpAnimations(model, gltf.animations, false);
+            players[playerId].animationInfo = result;
+
+            /*
+            api = result.api;
+            actionFunctions = result.actionFunctions;
+            mixer = result.mixer;
+            actions = result.actions;
+            actionStateInfo = result.actionStateInfo;
+            */
+          });
+        } else {
+          var avatar = players[playerId].avatar;
+
+          if (avatar) {
+
+            var position = info.position;
+            var quaternion = info.quaternion;
+            var deltaTime = Date.now() - players[playerId].timestamp;
+            players[playerId].timestamp = Date.now();
+
+            const coords = {
+              x: avatar.position.x,
+              y: avatar.position.y,
+              z: avatar.position.z
+            };
+            const tween = new TWEEN.Tween(avatar.position) // Create a new tween that modifies 'coords'.
+              .to({
+                x: position.x,
+                y: position.y,
+                z: position.z,
+              }, deltaTime) // Move to (300, 200) in 1 second.
+              .easing(TWEEN.Easing.Linear.None) // Use an easing function to make the animation smooth.
+              .onUpdate(() => {
+                // Called after tween.js updates 'coords'.
+                // Move 'box' to the position described by 'coords' with a CSS translation.
+                // box.style.setProperty('transform', `translate(${coords.x}px, ${coords.y}px)`)
+
+                /*
+                avatar.position.set(
+                  coords.x,
+                  coords.y,
+                  coords.z
+                );
+                */
+              })
+              .start() // Start the tween immediately.
+          }
+
+          players[playerId].info = info;
+        }
+      }
+
+      function removePlayer(info) {
+        let playerId = info.playerId;
+
+        console.log('Players:');
+        console.log(players);
+        console.log('Removing player with ID: ' + playerId);
+
+        if (players[playerId].avatar) {
+          players[playerId].avatar.removeFromParent();
+        }
+
+        delete players[playerId];
+      }
+
+
+
+      // networking
+
+      let socketEndpoint = 'http://localhost:3002';
+      if (process.env.NODE_ENV == 'production') {
+        socketEndpoint = 'http://roboparty-181954572.us-east-2.elb.amazonaws.com:3003'; // TODO: add ec2 instance endpoint
+      }
+      const socket = io(socketEndpoint);
+
+      var playerId = uuidv4();
+
+      socket.on('chat_message', function (msg) {
+        console.log('received chat message')
+        console.log(msg);
+
+        msg.isUserSender = playerId == msg.playerId;
+
+        window.receiveChatMessage(msg);
       });
-    }
 
-    socket.on('position', function (msg) {
-      // console.log(msg);
-
-      try {
-        updatePlayer(msg);
-      } catch (e) {
-        console.error(e);
+      window.sendChatMessage = function (message) {
+        console.log('sendChatMessage: ' + message);
+        socket.emit('chat_message', {
+          playerId: playerId,
+          username: username,
+          message: message,
+          roomId: roomId
+        });
       }
-      // showChatMessage(msg);
-    });
 
-    socket.on('action', function (msg) {
-      console.log(msg);
+      socket.on('position', function (msg) {
+        // console.log(msg);
 
-      let playerId = msg.playerId;
-      let player = players[playerId];
-      let usernameTextSprite = player.usernameTextSprite;
-
-      let state = msg.state;
-      let emote = msg.emote;
-      let expression = msg.expression;
-      let username = msg.username;
-      let color = msg.color;
-
-      if (state) {
         try {
-          player.animationInfo.actionFunctions.state[state]();
+          updatePlayer(msg);
         } catch (e) {
           console.error(e);
         }
-      }
+        // showChatMessage(msg);
+      });
 
-      if (emote && emote != "None") {
+      socket.on('action', function (msg) {
+        console.log(msg);
+
+        let playerId = msg.playerId;
+        let player = players[playerId];
+        let usernameTextSprite = player.usernameTextSprite;
+
+        let state = msg.state;
+        let emote = msg.emote;
+        let expression = msg.expression;
+        let username = msg.username;
+        let color = msg.color;
+
+        if (state) {
+          try {
+            player.animationInfo.actionFunctions.state[state]();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        if (emote && emote != "None") {
+          try {
+            console.log(player.animationInfo.actionFunctions.emote);
+            player.animationInfo.actionFunctions.emote[emote]();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        if (expression) {
+          try {
+            console.log(player.animationInfo.actionFunctions.expression);
+            player.animationInfo.actionFunctions.expression(expression);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        if (username) {
+          try {
+            updateUsernameTextSprite(usernameTextSprite, username);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        if (color) {
+          try {
+            setAvatarColorOfModel(player.avatar, color);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      });
+
+      window.sendAnimationInfo = (info => {
+        socket.emit('action', {
+          playerId: playerId,
+          state: info.state,
+          emote: info.emote,
+          expression: info.expression,
+          username: info.username,
+          color: info.color,
+          roomId: roomId
+        });
+      });
+
+      window.sendState = (state => {
+        socket.emit('action', {
+          playerId: playerId,
+          state: state,
+          roomId: roomId
+        });
+      });
+
+      window.sendEmote = (emote => {
+        socket.emit('action', {
+          playerId: playerId,
+          emote: emote,
+          roomId: roomId
+        });
+      });
+
+      window.sendExpression = (expression => {
+        socket.emit('action', {
+          playerId: playerId,
+          expression: expression,
+          roomId: roomId
+        });
+      });
+
+      socket.on('leave', function (msg) {
+        console.log(msg);
+
         try {
-          console.log(player.animationInfo.actionFunctions.emote);
-          player.animationInfo.actionFunctions.emote[emote]();
+          removePlayer(msg);
         } catch (e) {
           console.error(e);
         }
-      }
+        // showChatMessage(msg);
+      });
 
-      if (expression) {
-        try {
-          console.log(player.animationInfo.actionFunctions.expression);
-          player.animationInfo.actionFunctions.expression(expression);
-        } catch (e) {
-          console.error(e);
+      function emitPlayerInfo() {
+        if (!player) {
+          return;
         }
-      }
 
-      if (username) {
-        try {
-          updateUsernameTextSprite(usernameTextSprite, username);
-        } catch (e) {
-          console.error(e);
+        var pos = getPlayerPosition();
+        var quat = getPlayerQuaternion();
+
+        if (!pos) {
+          return;
         }
+
+        socket.emit('position', {
+          playerId: playerId,
+          position: {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z
+          },
+          quaternion: {
+            x: quat.x,
+            y: quat.y,
+            z: quat.z,
+            w: quat.w
+          },
+          avatarColor: avatarColor,
+          username: username,
+          roomId: roomId
+        });
       }
 
-      if (color) {
-        try {
-          setAvatarColorOfModel(player.avatar, color);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    });
-
-    window.sendAnimationInfo = (info => {
-      socket.emit('action', {
-        playerId: playerId,
-        state: info.state,
-        emote: info.emote,
-        expression: info.expression,
-        username: info.username,
-        color: info.color
-      });
-    });
-
-    window.sendState = (state => {
-      socket.emit('action', {
-        playerId: playerId,
-        state: state
-      });
-    });
-
-    window.sendEmote = (emote => {
-      socket.emit('action', {
-        playerId: playerId,
-        emote: emote
-      });
-    });
-
-    window.sendExpression = (expression => {
-      socket.emit('action', {
-        playerId: playerId,
-        expression: expression
-      });
-    });
-
-    socket.on('leave', function (msg) {
-      console.log(msg);
-
-      try {
-        removePlayer(msg);
-      } catch (e) {
-        console.error(e);
-      }
-      // showChatMessage(msg);
-    });
-
-    function emitPlayerInfo() {
-      if (!player) {
-        return;
-      }
-
-      var pos = getPlayerPosition();
-      var quat = getPlayerQuaternion();
-
-      if (!pos) {
-        return;
-      }
-
-      socket.emit('position', {
-        playerId: playerId,
-        position: {
-          x: pos.x,
-          y: pos.y,
-          z: pos.z
-        },
-        quaternion: {
-          x: quat.x,
-          y: quat.y,
-          z: quat.z,
-          w: quat.w
-        },
-        avatarColor: avatarColor,
-        username: username
-      });
+      // TODO: dynamically change delay based on number of players in room, to reduce lagginess
+      setInterval(emitPlayerInfo, 500);
     }
-
-    // TODO: dynamically change delay based on number of players in room, to reduce lagginess
-    setInterval(emitPlayerInfo, 500);
-
-
-
   </script>
 
   <div id="app"></div>
